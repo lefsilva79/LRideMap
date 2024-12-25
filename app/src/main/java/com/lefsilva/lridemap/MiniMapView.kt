@@ -2,16 +2,22 @@ package com.lefsilva.lridemap
 
 import android.content.Context
 import android.graphics.Color
+import android.os.Bundle
+import android.util.Log
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.TextView
+import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.MapView
+import com.google.android.gms.maps.MapsInitializer
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PolylineOptions
+
+private const val TAG = "MiniMapView"
 
 class MiniMapView(context: Context) : FrameLayout(context) {
     private lateinit var mapView: MapView
@@ -19,31 +25,103 @@ class MiniMapView(context: Context) : FrameLayout(context) {
     private var onCloseListener: (() -> Unit)? = null
     private lateinit var distanceText: TextView
     private lateinit var timeText: TextView
+    private var isMapReady = false
+    private var savedInstanceState: Bundle? = null
 
     init {
-        inflate(context, R.layout.mini_map_layout, this)
+        Log.d(TAG, "Initializing MiniMapView")
+        try {
+            // Inicializa o MapsInitializer
+            MapsInitializer.initialize(context.applicationContext)
 
-        mapView = findViewById(R.id.mini_map_view)
-        mapView.onCreate(null)
+            inflate(context, R.layout.mini_map_layout, this)
 
-        distanceText = findViewById(R.id.distance_text)
-        timeText = findViewById(R.id.time_text)
+            mapView = findViewById(R.id.mini_map_view)
+            savedInstanceState = Bundle()
+            mapView.onCreate(savedInstanceState)
 
-        findViewById<ImageButton>(R.id.close_button).setOnClickListener {
-            onCloseListener?.invoke()
+            // Inicia o mapa imediatamente após a criação
+            mapView.onStart()
+            mapView.onResume()
+
+            Log.d(TAG, "MapView created and initialized")
+
+            distanceText = findViewById(R.id.distance_text)
+            timeText = findViewById(R.id.time_text)
+
+            findViewById<ImageButton>(R.id.close_button).setOnClickListener {
+                Log.d(TAG, "Close button clicked")
+                onCloseListener?.invoke()
+            }
+
+            // Verifica disponibilidade do Google Play Services
+            val availability = GoogleApiAvailability.getInstance()
+            val result = availability.isGooglePlayServicesAvailable(context)
+            if (result == com.google.android.gms.common.ConnectionResult.SUCCESS) {
+                Log.d(TAG, "Google Play Services is available")
+                initializeMap()
+            } else {
+                Log.e(TAG, "Google Play Services is NOT available: $result")
+            }
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing MiniMapView", e)
+        }
+    }
+
+    private fun initializeMap() {
+        try {
+            mapView.getMapAsync { map ->
+                Log.d(TAG, "Initial map async callback received")
+                googleMap = map
+                isMapReady = true
+                map.apply {
+                    mapType = GoogleMap.MAP_TYPE_NORMAL
+                    uiSettings.apply {
+                        isZoomControlsEnabled = true
+                        isZoomGesturesEnabled = true
+                        isScrollGesturesEnabled = true
+                    }
+                }
+                Log.d(TAG, "Map initially configured")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in initial map setup", e)
         }
     }
 
     fun setOnCloseClickListener(listener: () -> Unit) {
         onCloseListener = listener
+        Log.d(TAG, "Close listener set")
     }
 
     fun showRoute(current: LatLng, destination: LatLng) {
-        mapView.getMapAsync { map ->
-            googleMap = map
+        Log.d(TAG, "showRoute called with current: $current, destination: $destination")
+
+        if (!::mapView.isInitialized) {
+            Log.e(TAG, "MapView not initialized")
+            return
+        }
+
+        if (!isMapReady) {
+            Log.d(TAG, "Map not ready, waiting for initialization")
+            mapView.getMapAsync { map ->
+                googleMap = map
+                isMapReady = true
+                displayRoute(current, destination)
+            }
+        } else {
+            displayRoute(current, destination)
+        }
+    }
+
+    private fun displayRoute(current: LatLng, destination: LatLng) {
+        try {
+            Log.d(TAG, "Displaying route on map")
 
             // Configura o mapa
-            map.apply {
+            googleMap.apply {
+                clear() // Limpa marcadores anteriores
                 mapType = GoogleMap.MAP_TYPE_NORMAL
                 uiSettings.apply {
                     isZoomControlsEnabled = true
@@ -53,51 +131,93 @@ class MiniMapView(context: Context) : FrameLayout(context) {
             }
 
             // Adiciona marcadores
-            map.addMarker(MarkerOptions().position(current).title("Origem"))
-            map.addMarker(MarkerOptions().position(destination).title("Destino"))
+            val originMarker = googleMap.addMarker(MarkerOptions()
+                .position(current)
+                .title("Origem"))
+            val destMarker = googleMap.addMarker(MarkerOptions()
+                .position(destination)
+                .title("Destino"))
+
+            if (originMarker != null && destMarker != null) {
+                Log.d(TAG, "Markers added successfully")
+            }
 
             // Desenha a linha
-            map.addPolyline(PolylineOptions()
+            googleMap.addPolyline(PolylineOptions()
                 .add(current, destination)
                 .width(5f)
                 .color(Color.BLUE))
 
-            // Ajusta a câmera
+            // Ajusta a câmera com padding
             val bounds = LatLngBounds.Builder()
                 .include(current)
                 .include(destination)
                 .build()
 
-            map.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, 100))
+            val padding = 200 // Aumenta o padding para melhor visualização
+            googleMap.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, padding))
 
             // Calcula e mostra a distância
             calculateDistanceAndTime(current, destination)
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error displaying route", e)
         }
     }
 
     private fun calculateDistanceAndTime(current: LatLng, destination: LatLng) {
-        val results = FloatArray(1)
-        android.location.Location.distanceBetween(
-            current.latitude, current.longitude,
-            destination.latitude, destination.longitude,
-            results
-        )
+        try {
+            val results = FloatArray(1)
+            android.location.Location.distanceBetween(
+                current.latitude, current.longitude,
+                destination.latitude, destination.longitude,
+                results
+            )
 
-        val distanceInKm = results[0] / 1000
-        val timeInMinutes = (distanceInKm / 50.0) * 60 // Estimativa baseada em velocidade média de 50km/h
+            val distanceInKm = results[0] / 1000
+            val timeInMinutes = (distanceInKm / 50.0) * 60
 
-        distanceText.text = "Distância: %.2f km".format(distanceInKm)
-        timeText.text = "Tempo estimado: %.0f min".format(timeInMinutes)
+            distanceText.text = "Distância: %.2f km".format(distanceInKm)
+            timeText.text = "Tempo estimado: %.0f min".format(timeInMinutes)
+            Log.d(TAG, "Distance calculation completed: $distanceInKm km, $timeInMinutes min")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error calculating distance and time", e)
+        }
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        mapView.onResume()
+        try {
+            if (::mapView.isInitialized) {
+                mapView.onStart()
+                mapView.onResume()
+                Log.d(TAG, "MapView resumed on attach")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error resuming MapView", e)
+        }
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        mapView.onPause()
-        mapView.onDestroy()
+        try {
+            if (::mapView.isInitialized) {
+                mapView.onPause()
+                mapView.onStop()
+                mapView.onDestroy()
+                Log.d(TAG, "MapView destroyed on detach")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error destroying MapView", e)
+        }
+    }
+
+    fun onSaveInstanceState(outState: Bundle) {
+        mapView.onSaveInstanceState(outState)
+    }
+
+    fun onLowMemory() {
+        mapView.onLowMemory()
+        Log.d(TAG, "MapView low memory")
     }
 }
