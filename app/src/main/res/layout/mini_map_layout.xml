@@ -21,7 +21,9 @@
             <com.google.android.gms.maps.MapView
                 android:id="@+id/mini_map_view"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent" />
+                android:layout_height="match_parent"
+                android:contentDescription="Mapa de navegação" />
+
 
             <ImageButton
                 android:id="@+id/close_button"
@@ -31,10 +33,12 @@
                 android:layout_margin="8dp"
                 android:background="@drawable/circle_background"
                 android:src="@drawable/ic_close"
+                android:contentDescription="Fechar mapa"
                 android:padding="12dp" />
         </FrameLayout>
 
         <LinearLayout
+            android:id="@+id/gpsWindow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
