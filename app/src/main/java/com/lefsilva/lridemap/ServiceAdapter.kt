@@ -32,20 +32,10 @@ class ServiceAdapter(
 
         holder.serviceIcon.setImageResource(service.iconResId)
         holder.serviceName.text = service.name
-
-        // Carregar o estado do serviço salvo no SharedPreferences
-        val sharedPreferences = context.getSharedPreferences("service_preferences", Context.MODE_PRIVATE)
-        val isServiceEnabled = sharedPreferences.getBoolean(service.name, service.isEnabled)  // Valor padrão é 'service.isEnabled'
-        holder.serviceSwitch.isChecked = isServiceEnabled
+        holder.serviceSwitch.isChecked = service.isEnabled
 
         holder.serviceSwitch.setOnCheckedChangeListener { _, isChecked ->
             onServiceToggle(service.name, isChecked)
-
-            // Salvar o estado do serviço no SharedPreferences
-            val sharedPreferences = context.getSharedPreferences("service_preferences", Context.MODE_PRIVATE)
-            val editor = sharedPreferences.edit()
-            editor.putBoolean(service.name, isChecked)
-            editor.apply()  // Salva as alterações de maneira assíncrona
         }
     }
 

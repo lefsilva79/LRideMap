@@ -189,5 +189,25 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         checkAndStartService()
+        // Atualizar o estado do switch baseado no serviço real
+        updateServiceState()
+    }
+
+    private fun updateServiceState() {
+        if (binding.recyclerView.adapter is ServiceAdapter) {
+            val isServiceRunning = isServiceRunning(FloatingButtonService::class.java)
+            val services = listOf(
+                ServiceItem(
+                    name = "Lyft Ride Map",
+                    iconResId = R.drawable.ic_map,
+                    isEnabled = isServiceRunning
+                )
+            )
+            binding.recyclerView.adapter = ServiceAdapter(this, services) { serviceName, isEnabled ->
+                when (serviceName) {
+                    "Lyft Ride Map" -> toggleFloatingButtonService(isEnabled)
+                }
+            }
+        }
     }
 }

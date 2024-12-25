@@ -368,15 +368,12 @@ class FloatingButtonService : Service() {
         try {
             if (::floatingButton.isInitialized) {
                 windowManager.removeView(floatingButton)
-                Log.d("FloatingButtonService", "Floating button removed")
             }
             if (::closeButton.isInitialized) {
                 windowManager.removeView(closeButton)
-                Log.d("FloatingButtonService", "Close button removed")
             }
             miniMapView?.let {
                 windowManager.removeView(it)
-                Log.d("FloatingButtonService", "MiniMap removed")
             }
         } catch (e: Exception) {
             Log.e("FloatingButtonService", "Error in onDestroy", e)
