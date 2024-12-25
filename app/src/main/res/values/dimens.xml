@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="card_corner_radius">16dp</dimen>
+    <dimen name="card_elevation">8dp</dimen>
+    <dimen name="map_padding">50dp</dimen>
+    <dimen name="floating_button_size">56dp</dimen>
+</resources>

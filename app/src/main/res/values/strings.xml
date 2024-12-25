@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">LRideMap</string>
+    <string name="floating_button_description">Botão flutuante para detectar endereços</string>
+    <string name="close_button_description">Botão para fechar o serviço</string>
+    <string name="accessibility_service_description">Serviço para detectar endereços do Lyft</string>
+    <string name="app_name_with_version">LRideMap v1.0</string>
+    <string name="distance_placeholder">Distância: --</string>
+    <string name="time_placeholder">Tempo est.: --</string>
+    <string name="navigate_with_waze">Navegar com Waze</string>
+    <string name="close_button">Fechar mapa</string>
+    <string name="map_description">Mapa mostrando rota entre sua localização e o destino</string>
+    <string name="service_icon_description">Ícone do serviço</string>
+</resources>
