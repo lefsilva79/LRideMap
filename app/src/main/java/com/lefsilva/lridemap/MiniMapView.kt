@@ -16,6 +16,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PolylineOptions
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 
 private const val TAG = "MiniMapView"
 
@@ -130,13 +131,17 @@ class MiniMapView(context: Context) : FrameLayout(context) {
                 }
             }
 
-            // Adiciona marcadores
+            // Cria marcadores com cores diferentes
             val originMarker = googleMap.addMarker(MarkerOptions()
                 .position(current)
-                .title("Origem"))
+                .title("Origem")
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)))
+
+            // Para o marcador de destino (ponto de chegada)
             val destMarker = googleMap.addMarker(MarkerOptions()
                 .position(destination)
-                .title("Destino"))
+                .title("Destino")
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA))) // 300.0f é mais "pink"
 
             if (originMarker != null && destMarker != null) {
                 Log.d(TAG, "Markers added successfully")
@@ -148,14 +153,19 @@ class MiniMapView(context: Context) : FrameLayout(context) {
                 .width(5f)
                 .color(Color.BLUE))
 
-            // Ajusta a câmera com padding
+            // Ajusta a câmera com padding aumentado
             val bounds = LatLngBounds.Builder()
                 .include(current)
                 .include(destination)
                 .build()
 
-            val padding = 200 // Aumenta o padding para melhor visualização
+            val padding = 300
+
+            // Move a câmera para mostrar os bounds com padding
             googleMap.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, padding))
+
+            // Aplica um zoom out adicional
+            //googleMap.animateCamera(CameraUpdateFactory.zoomOut())
 
             // Calcula e mostra a distância
             calculateDistanceAndTime(current, destination)
