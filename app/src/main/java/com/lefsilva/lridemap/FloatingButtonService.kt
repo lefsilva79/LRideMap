@@ -1,17 +1,16 @@
 package com.lefsilva.lridemap
 
 import android.Manifest
-import android.app.Service
+import android.app.*
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.PixelFormat
-import android.graphics.Rect
 import android.graphics.Color
 import android.location.Geocoder
-import android.net.Uri
+import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -25,6 +24,7 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.LatLng
 import java.io.IOException
@@ -46,15 +46,48 @@ class FloatingButtonService : Service() {
 
     companion object {
         private const val TAG = "FloatingButtonService"
+        private const val NOTIFICATION_ID = 1
+        private const val NOTIFICATION_CHANNEL_ID = "LRideMap_Channel"
     }
-
-    override fun onBind(intent: Intent): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
+        createNotificationChannel()
+        startForeground(NOTIFICATION_ID, createNotification())
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         setupFloatingButton()
         setupCloseButton()
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                "LRideMap Service",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Serviço do LRideMap em execução"
+            }
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun createNotification(): Notification {
+        return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setContentTitle("LRideMap")
+            .setContentText("Serviço em execução")
+            .setSmallIcon(R.drawable.ic_map)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        return START_STICKY
+    }
+
+    override fun onBind(intent: Intent): IBinder? {
+        return null
     }
 
     private fun setupFloatingButton() {
@@ -100,8 +133,6 @@ class FloatingButtonService : Service() {
 
     private fun setupTouchListener(params: WindowManager.LayoutParams) {
         val button = floatingButton.findViewById<ImageButton>(R.id.floatingButton)
-        var isDragging = false
-        val MOVEMENT_THRESHOLD = 50
 
         button.setOnTouchListener { view, event ->
             when (event.action) {
@@ -110,59 +141,62 @@ class FloatingButtonService : Service() {
                     initialY = params.y
                     initialTouchX = event.rawX
                     initialTouchY = event.rawY
-                    isDragging = false
                     showCloseButton()
+                    Log.d("FloatingButtonService", "ACTION_DOWN")
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    val deltaX = event.rawX - initialTouchX
-                    val deltaY = event.rawY - initialTouchY
-                    val movedSignificantly = Math.abs(deltaX) > MOVEMENT_THRESHOLD ||
-                            Math.abs(deltaY) > MOVEMENT_THRESHOLD
+                    params.x = initialX + (event.rawX - initialTouchX).toInt()
+                    params.y = initialY + (event.rawY - initialTouchY).toInt()
+                    try {
+                        windowManager.updateViewLayout(floatingButton, params)
 
-                    if (!isDragging && movedSignificantly) {
-                        isDragging = true
-                    }
+                        val isNear = isNearCloseButton()
+                        Log.d("FloatingButtonService", "Is near close button: $isNear")
 
-                    if (isDragging) {
-                        params.x = initialX + deltaX.toInt()
-                        params.y = initialY + deltaY.toInt()
-
-                        try {
-                            val isNearClose = isNearCloseButton()
-
-                            closeButton.findViewById<ImageView>(R.id.closeButton)?.apply {
-                                if (isNearClose) {
-                                    setColorFilter(Color.RED)
-                                    scaleX = 1.3f
-                                    scaleY = 1.3f
-                                    closeButton.alpha = 0.7f
-                                    applyAttractionForce(params)
-                                } else {
-                                    setColorFilter(Color.GRAY)
-                                    scaleX = 1.0f
-                                    scaleY = 1.0f
-                                    closeButton.alpha = 1.0f
-                                }
+                        if (isNear) {
+                            applyAttractionForce(params)
+                            closeButton.findViewById<ImageView>(R.id.closeButton)?.let { closeImageView ->
+                                closeImageView.setColorFilter(Color.RED)
+                                closeImageView.scaleX = 1.3f
+                                closeImageView.scaleY = 1.3f
                             }
-
-                            windowManager.updateViewLayout(floatingButton, params)
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Erro ao atualizar layout", e)
+                            closeButton.alpha = 0.7f
+                        } else {
+                            closeButton.findViewById<ImageView>(R.id.closeButton)?.let { closeImageView ->
+                                closeImageView.setColorFilter(Color.GRAY)
+                                closeImageView.scaleX = 1.0f
+                                closeImageView.scaleY = 1.0f
+                            }
+                            closeButton.alpha = 1.0f
                         }
+                    } catch (e: Exception) {
+                        Log.e("FloatingButtonService", "Error in ACTION_MOVE", e)
                     }
                     true
                 }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                MotionEvent.ACTION_UP -> {
+                    Log.d("FloatingButtonService", "ACTION_UP")
                     hideCloseButton()
 
-                    if (isDragging && isNearCloseButton()) {
-                        stopSelf()
-                    } else if (!isDragging) {
-                        handleButtonClick()
-                    }
+                    val isNear = isNearCloseButton()
+                    Log.d("FloatingButtonService", "Is near close button on UP: $isNear")
 
-                    isDragging = false
+                    if (isNear) {
+                        Log.d("FloatingButtonService", "Trying to stop service...")
+                        try {
+                            stopSelf()
+                            Log.d("FloatingButtonService", "Service stopped")
+                        } catch (e: Exception) {
+                            Log.e("FloatingButtonService", "Error stopping service", e)
+                        }
+                    } else {
+                        val moved = Math.abs(event.rawX - initialTouchX) > 5 ||
+                                Math.abs(event.rawY - initialTouchY) > 5
+                        if (!moved) {
+                            handleButtonClick()
+                        }
+                    }
                     true
                 }
                 else -> false
@@ -186,6 +220,7 @@ class FloatingButtonService : Service() {
                     Math.pow((closeLocation[1] - buttonLocation[1]).toDouble(), 2.0)
         ).toFloat()
 
+        Log.d("FloatingButtonService", "Distance to close button: $distance") // Adicione este log
         return distance < ATTRACTION_THRESHOLD
     }
 
@@ -329,15 +364,29 @@ class FloatingButtonService : Service() {
     }
 
     override fun onDestroy() {
+        Log.d("FloatingButtonService", "onDestroy called")
+        try {
+            if (::floatingButton.isInitialized) {
+                windowManager.removeView(floatingButton)
+                Log.d("FloatingButtonService", "Floating button removed")
+            }
+            if (::closeButton.isInitialized) {
+                windowManager.removeView(closeButton)
+                Log.d("FloatingButtonService", "Close button removed")
+            }
+            miniMapView?.let {
+                windowManager.removeView(it)
+                Log.d("FloatingButtonService", "MiniMap removed")
+            }
+        } catch (e: Exception) {
+            Log.e("FloatingButtonService", "Error in onDestroy", e)
+        }
         super.onDestroy()
-        if (::floatingButton.isInitialized) {
-            windowManager.removeView(floatingButton)
-        }
-        if (::closeButton.isInitialized) {
-            windowManager.removeView(closeButton)
-        }
-        miniMapView?.let {
-            windowManager.removeView(it)
-        }
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        stopForeground(true)
+        stopSelf()
     }
 }

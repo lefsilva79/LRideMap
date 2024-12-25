@@ -174,12 +174,14 @@ class MiniMapView(context: Context) : FrameLayout(context) {
                 results
             )
 
-            val distanceInKm = results[0] / 1000
-            val timeInMinutes = (distanceInKm / 50.0) * 60
+            // Converter metros para milhas (1 milha = 1609.34 metros)
+            val distanceInMiles = results[0] / 1609.34
+            // Tempo estimado considerando velocidade média de 30 mph
+            val timeInMinutes = (distanceInMiles / 30.0) * 60
 
-            distanceText.text = "Distância: %.2f km".format(distanceInKm)
+            distanceText.text = "Distância: %.2f mi".format(distanceInMiles)
             timeText.text = "Tempo estimado: %.0f min".format(timeInMinutes)
-            Log.d(TAG, "Distance calculation completed: $distanceInKm km, $timeInMinutes min")
+            Log.d(TAG, "Distance calculation completed: $distanceInMiles miles, $timeInMinutes min")
         } catch (e: Exception) {
             Log.e(TAG, "Error calculating distance and time", e)
         }
