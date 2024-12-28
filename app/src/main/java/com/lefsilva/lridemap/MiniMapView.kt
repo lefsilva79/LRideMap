@@ -17,6 +17,12 @@ import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import android.view.LayoutInflater
+import com.google.android.material.slider.Slider
+import androidx.appcompat.app.AlertDialog
+import android.widget.SeekBar
+import android.widget.Toast
+
 
 private const val TAG = "MiniMapView"
 
@@ -30,55 +36,91 @@ class MiniMapView(context: Context) : FrameLayout(context) {
     private lateinit var timeText: TextView
     private var isMapReady = false
     private var savedInstanceState: Bundle? = null
+    private lateinit var lastCurrentLocation: LatLng
+    private lateinit var lastDestination: LatLng
+
 
     init {
         Log.d(TAG, "Initializing MiniMapView")
         try {
-            // Inicializa o MapsInitializer
-            MapsInitializer.initialize(context.applicationContext)
+            // Inicializa o MapsInitializer de forma assíncrona
+            MapsInitializer.initialize(context.applicationContext, MapsInitializer.Renderer.LATEST) { }
 
             inflate(context, R.layout.mini_map_layout, this)
 
             // Inicializa as preferências após o inflate
             preferences = AppPreferences(context)
 
+            // Inicializa as views
+            initializeViews()
+
+            // Verifica disponibilidade do Google Play Services e inicializa o mapa
+            checkGooglePlayServicesAndInitMap()
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing MiniMapView", e)
+        }
+    }
+
+    private fun initializeViews() {
+        try {
+            // Inicializa o MapView
             mapView = findViewById(R.id.mini_map_view)
             savedInstanceState = Bundle()
             mapView.onCreate(savedInstanceState)
-
-            // Inicia o mapa imediatamente após a criação
             mapView.onStart()
             mapView.onResume()
 
-            Log.d(TAG, "MapView created and initialized")
-
+            // Inicializa os TextViews
             distanceText = findViewById(R.id.distance_text)
             timeText = findViewById(R.id.time_text)
 
-            // Configura o listener do botão de fechar
+            // Configura os botões
             findViewById<ImageButton>(R.id.close_button).setOnClickListener {
                 Log.d(TAG, "Close button clicked")
                 onCloseListener?.invoke()
             }
 
-            // Configura o listener do botão de configurações
+            // Configura o botão de configurações para alterar tanto a espessura quanto as cores
             findViewById<ImageButton>(R.id.settings_button).setOnClickListener {
                 Log.d(TAG, "Settings button clicked")
-                onSettingsListener?.invoke()
+
+                // Alterna entre três espessuras de linha: 5f, 10f, 15f
+                preferences.lineThickness = when (preferences.lineThickness) {
+                    5f -> 10f
+                    10f -> 15f
+                    else -> 5f
+                }
+
+                // Troca as cores dos marcadores
+                val originColor = getOriginMarkerColor()
+                val destinationColor = getDestinationMarkerColor()
+                setMarkerColors(
+                    originColor = destinationColor,
+                    destinationColor = originColor
+                )
+
+                // Atualiza a rota com a nova espessura e cores
+                if (::lastCurrentLocation.isInitialized && ::lastDestination.isInitialized) {
+                    showRoute(lastCurrentLocation, lastDestination)
+                }
             }
 
-            // Verifica disponibilidade do Google Play Services
-            val availability = GoogleApiAvailability.getInstance()
-            val result = availability.isGooglePlayServicesAvailable(context)
-            if (result == com.google.android.gms.common.ConnectionResult.SUCCESS) {
-                Log.d(TAG, "Google Play Services is available")
-                initializeMap()
-            } else {
-                Log.e(TAG, "Google Play Services is NOT available: $result")
-            }
-
+            Log.d(TAG, "Views initialized")
         } catch (e: Exception) {
-            Log.e(TAG, "Error initializing MiniMapView", e)
+            Log.e(TAG, "Error initializing views", e)
+        }
+    }
+
+    private fun checkGooglePlayServicesAndInitMap() {
+        val availability = GoogleApiAvailability.getInstance()
+        val result = availability.isGooglePlayServicesAvailable(context)
+
+        if (result == com.google.android.gms.common.ConnectionResult.SUCCESS) {
+            Log.d(TAG, "Google Play Services is available")
+            initializeMap()
+        } else {
+            Log.e(TAG, "Google Play Services is NOT available: $result")
         }
     }
 
@@ -115,21 +157,29 @@ class MiniMapView(context: Context) : FrameLayout(context) {
 
     fun showRoute(current: LatLng, destination: LatLng) {
         Log.d(TAG, "showRoute called with current: $current, destination: $destination")
+        try {
+            // Salva as localizações para uso posterior
+            lastCurrentLocation = current
+            lastDestination = destination
 
-        if (!::mapView.isInitialized) {
-            Log.e(TAG, "MapView not initialized")
-            return
-        }
+            if (!::mapView.isInitialized) {
+                Log.e(TAG, "MapView not initialized")
+                return
+            }
 
-        if (!isMapReady) {
-            Log.d(TAG, "Map not ready, waiting for initialization")
-            mapView.getMapAsync { map ->
-                googleMap = map
-                isMapReady = true
+            if (!isMapReady) {
+                Log.d(TAG, "Map not ready, waiting for initialization")
+                mapView.getMapAsync { map ->
+                    googleMap = map
+                    isMapReady = true
+                    displayRoute(current, destination)
+                }
+            } else {
                 displayRoute(current, destination)
             }
-        } else {
-            displayRoute(current, destination)
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error showing route", e)
         }
     }
 
@@ -148,47 +198,73 @@ class MiniMapView(context: Context) : FrameLayout(context) {
                 }
             }
 
-            // Cria marcadores com cores das preferências
-            val originMarker = googleMap.addMarker(MarkerOptions()
-                .position(current)
-                .title("Origem")
-                .icon(BitmapDescriptorFactory.defaultMarker(preferences.originMarkerColor)))
+            // Adiciona o marcador de origem
+            googleMap.addMarker(
+                MarkerOptions()
+                    .position(current)
+                    .title("Origem")
+                    .icon(BitmapDescriptorFactory.defaultMarker(preferences.originMarkerColor))
+            )
 
-            // Para o marcador de destino (ponto de chegada)
-            val destMarker = googleMap.addMarker(MarkerOptions()
-                .position(destination)
-                .title("Destino")
-                .icon(BitmapDescriptorFactory.defaultMarker(preferences.destinationMarkerColor)))
+            // Adiciona o marcador de destino
+            googleMap.addMarker(
+                MarkerOptions()
+                    .position(destination)
+                    .title("Destino")
+                    .icon(BitmapDescriptorFactory.defaultMarker(preferences.destinationMarkerColor))
+            )
 
-            if (originMarker != null && destMarker != null) {
-                Log.d(TAG, "Markers added successfully")
-            }
+            // Desenha a linha entre os pontos usando a espessura definida nas preferências
+            googleMap.addPolyline(
+                PolylineOptions()
+                    .add(current, destination)
+                    .width(preferences.lineThickness)
+                    .color(Color.BLUE)
+            )
 
-            // Desenha a linha
-            googleMap.addPolyline(PolylineOptions()
-                .add(current, destination)
-                .width(5f)
-                .color(Color.BLUE))
-
-            // Ajusta a câmera com padding aumentado
+            // Ajusta a câmera para mostrar os dois pontos
             val bounds = LatLngBounds.Builder()
                 .include(current)
                 .include(destination)
                 .build()
 
-            val padding = 300
+            val padding = 300 // O padding que estava funcionando antes
 
             // Move a câmera para mostrar os bounds com padding
             googleMap.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, padding))
-
-            // Aplica um zoom out adicional
-            //googleMap.animateCamera(CameraUpdateFactory.zoomOut())
 
             // Calcula e mostra a distância
             calculateDistanceAndTime(current, destination)
 
         } catch (e: Exception) {
             Log.e(TAG, "Error displaying route", e)
+        }
+    }
+
+    fun showLineThicknessDialog() {
+        try {
+            val dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_line_thickness, null)
+            val seekBar = dialogView.findViewById<SeekBar>(R.id.lineThicknessSlider)
+
+            // Define o valor atual do seekbar
+            seekBar.max = 20
+            seekBar.progress = preferences.lineThickness.toInt()
+
+            AlertDialog.Builder(context)
+                .setTitle(R.string.line_thickness_title)
+                .setView(dialogView)
+                .setPositiveButton(android.R.string.ok) { _, _ ->
+                    // Salva o novo valor
+                    preferences.lineThickness = seekBar.progress.toFloat()
+                    // Atualiza a rota com a nova espessura
+                    if (::lastCurrentLocation.isInitialized && ::lastDestination.isInitialized) {
+                        showRoute(lastCurrentLocation, lastDestination)
+                    }
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error showing line thickness dialog", e)
         }
     }
 

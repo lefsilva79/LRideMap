@@ -10,4 +10,5 @@
     <string name="close_button">Fechar mapa</string>
     <string name="map_description">Mapa mostrando rota entre sua localização e o destino</string>
     <string name="service_icon_description">Ícone do serviço</string>
+    <string name="line_thickness_title">Espessura da Linha</string>
 </resources>
