@@ -151,6 +151,11 @@ class MiniMapView(context: Context) : FrameLayout(context) {
         Log.d(TAG, "Close listener set")
     }
 
+    /**
+     * Shows the route between two points on the map
+     * Created by lefsilva79
+     * Date: 2024-12-28 07:52:43 UTC
+     */
     fun showRoute(current: LatLng, destination: LatLng) {
         Log.d(TAG, "showRoute called with current: $current, destination: $destination")
         try {
@@ -229,6 +234,9 @@ class MiniMapView(context: Context) : FrameLayout(context) {
             // Move a câmera para mostrar os bounds com padding
             googleMap.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, padding))
 
+            // Aplica zoom inicial
+            googleMap.animateCamera(CameraUpdateFactory.zoomTo(11f))
+
             // Calcula e mostra a distância
             calculateDistanceAndTime(current, destination)
 
@@ -237,32 +245,6 @@ class MiniMapView(context: Context) : FrameLayout(context) {
         }
     }
 
-    fun showLineThicknessDialog() {
-        try {
-            val dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_line_thickness, null)
-            val seekBar = dialogView.findViewById<SeekBar>(R.id.lineThicknessSlider)
-
-            // Define o valor atual do seekbar
-            seekBar.max = 20
-            seekBar.progress = preferences.lineThickness.toInt()
-
-            AlertDialog.Builder(context)
-                .setTitle(R.string.line_thickness_title)
-                .setView(dialogView)
-                .setPositiveButton(android.R.string.ok) { _, _ ->
-                    // Salva o novo valor
-                    preferences.lineThickness = seekBar.progress.toFloat()
-                    // Atualiza a rota com a nova espessura
-                    if (::lastCurrentLocation.isInitialized && ::lastDestination.isInitialized) {
-                        showRoute(lastCurrentLocation, lastDestination)
-                    }
-                }
-                .setNegativeButton(android.R.string.cancel, null)
-                .show()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error showing line thickness dialog", e)
-        }
-    }
 
     private fun calculateDistanceAndTime(current: LatLng, destination: LatLng) {
         try {
