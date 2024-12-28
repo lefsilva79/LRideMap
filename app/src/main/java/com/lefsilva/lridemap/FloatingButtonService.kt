@@ -29,6 +29,8 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.LatLng
 import java.io.IOException
 import kotlin.concurrent.thread
+import android.app.AlertDialog
+import android.widget.Button
 
 class FloatingButtonService : Service() {
     private lateinit var windowManager: WindowManager
@@ -327,12 +329,14 @@ class FloatingButtonService : Service() {
                 miniMapView = null
             }
 
+
             windowManager.addView(miniMap, params)
             miniMap.showRoute(current, destination)
         } catch (e: Exception) {
             Log.e(TAG, "Erro ao mostrar mini mapa", e)
         }
     }
+
 
     private fun checkLocationPermission(): Boolean {
         return ActivityCompat.checkSelfPermission(
@@ -386,4 +390,5 @@ class FloatingButtonService : Service() {
         stopForeground(true)
         stopSelf()
     }
+
 }

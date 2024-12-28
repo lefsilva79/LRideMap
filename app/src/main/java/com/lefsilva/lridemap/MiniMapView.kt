@@ -23,7 +23,9 @@ private const val TAG = "MiniMapView"
 class MiniMapView(context: Context) : FrameLayout(context) {
     private lateinit var mapView: MapView
     private lateinit var googleMap: GoogleMap
+    private lateinit var preferences: AppPreferences
     private var onCloseListener: (() -> Unit)? = null
+    private var onSettingsListener: (() -> Unit)? = null
     private lateinit var distanceText: TextView
     private lateinit var timeText: TextView
     private var isMapReady = false
@@ -36,6 +38,9 @@ class MiniMapView(context: Context) : FrameLayout(context) {
             MapsInitializer.initialize(context.applicationContext)
 
             inflate(context, R.layout.mini_map_layout, this)
+
+            // Inicializa as preferências após o inflate
+            preferences = AppPreferences(context)
 
             mapView = findViewById(R.id.mini_map_view)
             savedInstanceState = Bundle()
@@ -50,9 +55,16 @@ class MiniMapView(context: Context) : FrameLayout(context) {
             distanceText = findViewById(R.id.distance_text)
             timeText = findViewById(R.id.time_text)
 
+            // Configura o listener do botão de fechar
             findViewById<ImageButton>(R.id.close_button).setOnClickListener {
                 Log.d(TAG, "Close button clicked")
                 onCloseListener?.invoke()
+            }
+
+            // Configura o listener do botão de configurações
+            findViewById<ImageButton>(R.id.settings_button).setOnClickListener {
+                Log.d(TAG, "Settings button clicked")
+                onSettingsListener?.invoke()
             }
 
             // Verifica disponibilidade do Google Play Services
@@ -68,6 +80,11 @@ class MiniMapView(context: Context) : FrameLayout(context) {
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing MiniMapView", e)
         }
+    }
+
+    fun setOnSettingsClickListener(listener: () -> Unit) {
+        onSettingsListener = listener
+        Log.d(TAG, "Settings listener set")
     }
 
     private fun initializeMap() {
@@ -131,17 +148,17 @@ class MiniMapView(context: Context) : FrameLayout(context) {
                 }
             }
 
-            // Cria marcadores com cores diferentes
+            // Cria marcadores com cores das preferências
             val originMarker = googleMap.addMarker(MarkerOptions()
                 .position(current)
                 .title("Origem")
-                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)))
+                .icon(BitmapDescriptorFactory.defaultMarker(preferences.originMarkerColor)))
 
             // Para o marcador de destino (ponto de chegada)
             val destMarker = googleMap.addMarker(MarkerOptions()
                 .position(destination)
                 .title("Destino")
-                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA))) // 300.0f é mais "pink"
+                .icon(BitmapDescriptorFactory.defaultMarker(preferences.destinationMarkerColor)))
 
             if (originMarker != null && destMarker != null) {
                 Log.d(TAG, "Markers added successfully")
@@ -231,5 +248,20 @@ class MiniMapView(context: Context) : FrameLayout(context) {
     fun onLowMemory() {
         mapView.onLowMemory()
         Log.d(TAG, "MapView low memory")
+    }
+
+    fun getOriginMarkerColor(): Float {
+        return preferences.originMarkerColor
+    }
+
+    fun getDestinationMarkerColor(): Float {
+        return preferences.destinationMarkerColor
+    }
+
+    fun setMarkerColors(originColor: Float, destinationColor: Float) {
+        preferences.apply {
+            originMarkerColor = originColor
+            destinationMarkerColor = destinationColor
+        }
     }
 }
