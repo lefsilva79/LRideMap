@@ -309,8 +309,8 @@ class FloatingButtonService : Service() {
             miniMapView = miniMap
 
             val params = WindowManager.LayoutParams(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT,
+                850, // Largura fixa em pixels como definido no XML
+                850, // Altura fixa em pixels como definido no XML
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -319,9 +319,9 @@ class FloatingButtonService : Service() {
                         WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
                 PixelFormat.TRANSLUCENT
             ).apply {
-                gravity = Gravity.CENTER
-                width = resources.displayMetrics.widthPixels - 32
-                height = (resources.displayMetrics.heightPixels * 0.7).toInt()
+                gravity = Gravity.TOP or Gravity.START // Alterado para posicionar no topo
+                x = 24 // Margem esquerda como definido no XML
+                y = 0  // Posição no topo
             }
 
             miniMap.setOnCloseClickListener {
@@ -330,19 +330,13 @@ class FloatingButtonService : Service() {
             }
 
             miniMap.setOnSettingsClickListener {
-                // Troca as cores dos marcadores usando os métodos públicos
                 val originColor = miniMap.getOriginMarkerColor()
                 val destinationColor = miniMap.getDestinationMarkerColor()
-
-                // Troca as cores
                 miniMap.setMarkerColors(
                     originColor = destinationColor,
                     destinationColor = originColor
                 )
-
-                // Atualiza o mapa com as novas cores
                 miniMap.showRoute(current, destination)
-
                 Toast.makeText(
                     this,
                     "Cores dos marcadores atualizadas",

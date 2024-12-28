@@ -71,10 +71,6 @@ class MiniMapView(context: Context) : FrameLayout(context) {
             mapView.onStart()
             mapView.onResume()
 
-            // Inicializa os TextViews
-            distanceText = findViewById(R.id.distance_text)
-            timeText = findViewById(R.id.time_text)
-
             // Configura os botões
             findViewById<ImageButton>(R.id.close_button).setOnClickListener {
                 Log.d(TAG, "Close button clicked")

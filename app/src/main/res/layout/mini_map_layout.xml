@@ -3,77 +3,48 @@
     android:id="@+id/cardView"
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:layout_width="850px"
+    android:layout_height="850px"
+    android:layout_x="24px"
+    android:layout_y="0px"
     app:cardCornerRadius="16dp"
     app:cardElevation="8dp">
 
-    <LinearLayout
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:layout_height="match_parent">
 
-        <FrameLayout
+        <com.google.android.gms.maps.MapView
+            android:id="@+id/mini_map_view"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1">
-
-            <com.google.android.gms.maps.MapView
-                android:id="@+id/mini_map_view"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:contentDescription="Mapa de navegação" />
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="end|top"
-                android:layout_margin="8dp"
-                android:orientation="horizontal">
-
-                <ImageButton
-                    android:id="@+id/settings_button"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:layout_marginEnd="8dp"
-                    android:background="@drawable/circle_background"
-                    android:src="@drawable/ic_settings"
-                    android:contentDescription="Configurações do mapa"
-                    android:padding="12dp" />
-
-                <ImageButton
-                    android:id="@+id/close_button"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="@drawable/circle_background"
-                    android:src="@drawable/ic_close"
-                    android:contentDescription="Fechar mapa"
-                    android:padding="12dp" />
-            </LinearLayout>
-        </FrameLayout>
+            android:layout_height="match_parent"
+            android:contentDescription="Mapa de navegação" />
 
         <LinearLayout
-            android:id="@+id/gpsWindow"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp"
-            android:background="#FFFFFF">
+            android:layout_gravity="end|top"
+            android:layout_margin="8dp"
+            android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/distance_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="16sp"
-                android:textColor="#000000" />
+            <ImageButton
+                android:id="@+id/settings_button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/circle_background"
+                android:src="@drawable/ic_settings"
+                android:contentDescription="Configurações do mapa"
+                android:padding="12dp" />
 
-            <TextView
-                android:id="@+id/time_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="16sp"
-                android:textColor="#000000"
-                android:layout_marginTop="4dp" />
+            <ImageButton
+                android:id="@+id/close_button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/circle_background"
+                android:src="@drawable/ic_close"
+                android:contentDescription="Fechar mapa"
+                android:padding="12dp" />
         </LinearLayout>
-    </LinearLayout>
+    </FrameLayout>
 </androidx.cardview.widget.CardView>
