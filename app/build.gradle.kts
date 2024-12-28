@@ -28,6 +28,8 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        manifestPlaceholders["MAPS_API_KEY"] = localProperties.getProperty("MAPS_API_KEY", "")
     }
 
     buildTypes {
@@ -48,7 +50,7 @@ android {
     }
     buildFeatures {
         compose = true
-        viewBinding = true
+        viewBinding = true  // Adicionada esta linha
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.8"
@@ -93,10 +95,6 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.test:runner:1.5.2")
     androidTestImplementation("androidx.test:rules:1.5.0")
-
-    // AmbilWarna
-    implementation("yuku.ambilwarna:ambilwarna:2.0.1")
-
-    // CardView
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
     implementation("androidx.cardview:cardview:1.0.0")
 }

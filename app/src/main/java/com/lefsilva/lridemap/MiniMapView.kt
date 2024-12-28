@@ -250,6 +250,7 @@ class MiniMapView(context: Context) : FrameLayout(context) {
         Log.d(TAG, "MapView low memory")
     }
 
+    // No MiniMapView.kt
     fun getOriginMarkerColor(): Float {
         return preferences.originMarkerColor
     }

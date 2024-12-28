@@ -329,6 +329,26 @@ class FloatingButtonService : Service() {
                 miniMapView = null
             }
 
+            miniMap.setOnSettingsClickListener {
+                // Troca as cores dos marcadores usando os métodos públicos
+                val originColor = miniMap.getOriginMarkerColor()
+                val destinationColor = miniMap.getDestinationMarkerColor()
+
+                // Troca as cores
+                miniMap.setMarkerColors(
+                    originColor = destinationColor,
+                    destinationColor = originColor
+                )
+
+                // Atualiza o mapa com as novas cores
+                miniMap.showRoute(current, destination)
+
+                Toast.makeText(
+                    this,
+                    "Cores dos marcadores atualizadas",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
 
             windowManager.addView(miniMap, params)
             miniMap.showRoute(current, destination)
