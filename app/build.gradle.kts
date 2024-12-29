@@ -50,7 +50,7 @@ android {
     }
     buildFeatures {
         compose = true
-        viewBinding = true  // Adicionada esta linha
+        viewBinding = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.8"
@@ -100,4 +100,5 @@ dependencies {
     androidTestImplementation("androidx.test:rules:1.5.0")
     implementation("com.google.android.gms:play-services-maps:18.2.0")
     implementation("androidx.cardview:cardview:1.0.0")
+    implementation ("androidx.localbroadcastmanager:localbroadcastmanager:1.1.0")
 }

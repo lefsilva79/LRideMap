@@ -29,8 +29,14 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.LatLng
 import java.io.IOException
 import kotlin.concurrent.thread
-import android.app.AlertDialog
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 import android.widget.Button
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 class FloatingButtonService : Service() {
     private lateinit var windowManager: WindowManager
@@ -46,10 +52,19 @@ class FloatingButtonService : Service() {
     private val ATTRACTION_THRESHOLD = 300
     private val ATTRACTION_FORCE = 0.6f
 
+    private val settingsReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == INTERNAL_UPDATE_SETTINGS) {
+                miniMapView?.updateMapSettings()
+            }
+        }
+    }
+
     companion object {
         private const val TAG = "FloatingButtonService"
         private const val NOTIFICATION_ID = 1
         private const val NOTIFICATION_CHANNEL_ID = "LRideMap_Channel"
+        const val INTERNAL_UPDATE_SETTINGS = "com.lefsilva.lridemap.INTERNAL_UPDATE_SETTINGS"
     }
 
     override fun onCreate() {
@@ -59,6 +74,11 @@ class FloatingButtonService : Service() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         setupFloatingButton()
         setupCloseButton()
+
+        LocalBroadcastManager.getInstance(this).registerReceiver(
+            settingsReceiver,
+            IntentFilter(INTERNAL_UPDATE_SETTINGS)
+        )
     }
 
     private fun createNotificationChannel() {
@@ -144,7 +164,7 @@ class FloatingButtonService : Service() {
                     initialTouchX = event.rawX
                     initialTouchY = event.rawY
                     showCloseButton()
-                    Log.d("FloatingButtonService", "ACTION_DOWN")
+                    Log.d(TAG, "ACTION_DOWN")
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
@@ -154,7 +174,7 @@ class FloatingButtonService : Service() {
                         windowManager.updateViewLayout(floatingButton, params)
 
                         val isNear = isNearCloseButton()
-                        Log.d("FloatingButtonService", "Is near close button: $isNear")
+                        Log.d(TAG, "Is near close button: $isNear")
 
                         if (isNear) {
                             applyAttractionForce(params)
@@ -173,24 +193,24 @@ class FloatingButtonService : Service() {
                             closeButton.alpha = 1.0f
                         }
                     } catch (e: Exception) {
-                        Log.e("FloatingButtonService", "Error in ACTION_MOVE", e)
+                        Log.e(TAG, "Error in ACTION_MOVE", e)
                     }
                     true
                 }
                 MotionEvent.ACTION_UP -> {
-                    Log.d("FloatingButtonService", "ACTION_UP")
+                    Log.d(TAG, "ACTION_UP")
                     hideCloseButton()
 
                     val isNear = isNearCloseButton()
-                    Log.d("FloatingButtonService", "Is near close button on UP: $isNear")
+                    Log.d(TAG, "Is near close button on UP: $isNear")
 
                     if (isNear) {
-                        Log.d("FloatingButtonService", "Trying to stop service...")
+                        Log.d(TAG, "Trying to stop service...")
                         try {
                             stopSelf()
-                            Log.d("FloatingButtonService", "Service stopped")
+                            Log.d(TAG, "Service stopped")
                         } catch (e: Exception) {
-                            Log.e("FloatingButtonService", "Error stopping service", e)
+                            Log.e(TAG, "Error stopping service", e)
                         }
                     } else {
                         val moved = Math.abs(event.rawX - initialTouchX) > 5 ||
@@ -222,7 +242,6 @@ class FloatingButtonService : Service() {
                     Math.pow((closeLocation[1] - buttonLocation[1]).toDouble(), 2.0)
         ).toFloat()
 
-        Log.d("FloatingButtonService", "Distance to close button: $distance") // Adicione este log
         return distance < ATTRACTION_THRESHOLD
     }
 
@@ -286,15 +305,19 @@ class FloatingButtonService : Service() {
                                     showMiniMap(currentLocation, destinationCoords)
                                 }
                             } else {
-                                Toast.makeText(this,
+                                Toast.makeText(
+                                    this,
                                     "Não foi possível obter sua localização atual",
-                                    Toast.LENGTH_SHORT).show()
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         }
                     } else {
-                        Toast.makeText(this,
+                        Toast.makeText(
+                            this,
                             "Permissão de localização necessária",
-                            Toast.LENGTH_SHORT).show()
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             }
@@ -308,9 +331,25 @@ class FloatingButtonService : Service() {
             val miniMap = MiniMapView(this)
             miniMapView = miniMap
 
+            // Usar AppPreferences ao invés de MapSettings
+            val preferences = AppPreferences(this)
+            val mapSize = preferences.mapWidth // width e height são iguais
+            val originHue = preferences.originMarkerColor
+            val destinationHue = preferences.destinationMarkerColor
+
+            Log.d(TAG, """
+            ===== Mini Map Configuration =====
+            Time (UTC): ${getCurrentUTCTime()}
+            Map Size: $mapSize
+            Colors:
+            - Origin Hue: $originHue
+            - Destination Hue: $destinationHue
+            ==================================
+        """.trimIndent())
+
             val params = WindowManager.LayoutParams(
-                850, // Largura fixa em pixels como definido no XML
-                850, // Altura fixa em pixels como definido no XML
+                mapSize,
+                mapSize,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -319,10 +358,13 @@ class FloatingButtonService : Service() {
                         WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
                 PixelFormat.TRANSLUCENT
             ).apply {
-                gravity = Gravity.TOP or Gravity.START // Alterado para posicionar no topo
-                x = 24 // Margem esquerda como definido no XML
-                y = 0  // Posição no topo
+                gravity = Gravity.TOP or Gravity.START
+                x = 24
+                y = 0
             }
+
+            // Configurar as cores usando valores de matiz (hue)
+            miniMap.setMarkerColors(originColor = originHue, destinationColor = destinationHue)
 
             miniMap.setOnCloseClickListener {
                 windowManager.removeView(miniMap)
@@ -330,25 +372,137 @@ class FloatingButtonService : Service() {
             }
 
             miniMap.setOnSettingsClickListener {
-                val originColor = miniMap.getOriginMarkerColor()
-                val destinationColor = miniMap.getDestinationMarkerColor()
-                miniMap.setMarkerColors(
-                    originColor = destinationColor,
-                    destinationColor = originColor
-                )
-                miniMap.showRoute(current, destination)
-                Toast.makeText(
-                    this,
-                    "Cores dos marcadores atualizadas",
-                    Toast.LENGTH_SHORT
-                ).show()
+                showMapSettingsDialog(miniMap, current, destination, params)
             }
 
             windowManager.addView(miniMap, params)
             miniMap.showRoute(current, destination)
+
         } catch (e: Exception) {
             Log.e(TAG, "Erro ao mostrar mini mapa", e)
+            e.printStackTrace()
         }
+    }
+
+    private fun swapMarkerColors(miniMap: MiniMapView, current: LatLng, destination: LatLng) {
+        val preferences = AppPreferences(this)
+        val oldOriginHue = preferences.originMarkerColor
+        val oldDestinationHue = preferences.destinationMarkerColor
+
+        Log.d(TAG, """
+        ===== Swapping Marker Colors =====
+        Time (UTC): ${getCurrentUTCTime()}
+        Before Swap:
+        - Origin: ${MarkerColor.fromColorValue(oldOriginHue).name} ($oldOriginHue)
+        - Destination: ${MarkerColor.fromColorValue(oldDestinationHue).name} ($oldDestinationHue)
+        ================================
+    """.trimIndent())
+
+        // Trocar as cores
+        preferences.apply {
+            originMarkerColor = oldDestinationHue
+            destinationMarkerColor = oldOriginHue
+        }
+
+        // Aplicar as novas cores
+        miniMap.setMarkerColors(
+            originColor = preferences.originMarkerColor,
+            destinationColor = preferences.destinationMarkerColor
+        )
+
+        Log.d(TAG, """
+        ===== Colors Swapped =====
+        Time (UTC): ${getCurrentUTCTime()}
+        After Swap:
+        - Origin: ${MarkerColor.fromColorValue(preferences.originMarkerColor).name} (${preferences.originMarkerColor})
+        - Destination: ${MarkerColor.fromColorValue(preferences.destinationMarkerColor).name} (${preferences.destinationMarkerColor})
+        =======================
+    """.trimIndent())
+
+        // Atualizar a rota com as novas cores
+        miniMap.showRoute(current, destination)
+
+        Toast.makeText(this, "Cores dos marcadores atualizadas", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun adjustMapSize(params: WindowManager.LayoutParams, increase: Boolean, miniMap: MiniMapView) {
+        val preferences = AppPreferences(this)
+        val changeAmount = 50
+        val minSize = 400
+        val maxSize = 1000
+        val currentSize = params.width
+
+        val newSize = when {
+            increase -> (currentSize + changeAmount).coerceAtMost(maxSize)
+            else -> (currentSize - changeAmount).coerceAtLeast(minSize)
+        }
+
+        Log.d(TAG, """
+        ===== Adjusting Map Size =====
+        Time (UTC): ${getCurrentUTCTime()}
+        Current Size: $currentSize
+        New Size: $newSize
+        Change: ${if (increase) "+$changeAmount" else "-$changeAmount"}
+        Within Bounds: ${newSize in minSize..maxSize}
+        ===========================
+    """.trimIndent())
+
+        if (newSize != currentSize) {
+            params.width = newSize
+            params.height = newSize
+
+            try {
+                windowManager.updateViewLayout(miniMap, params)
+                preferences.apply {
+                    mapWidth = newSize
+                    mapHeight = newSize
+                }
+                Log.d(TAG, """
+                ===== Map Size Updated =====
+                Time (UTC): ${getCurrentUTCTime()}
+                New Size Saved: $newSize
+                Params Updated: ${params.width}x${params.height}
+                ==========================
+            """.trimIndent())
+            } catch (e: Exception) {
+                Log.e(TAG, "Erro ao atualizar tamanho do mapa", e)
+            }
+        }
+    }
+
+    private fun getCurrentUTCTime(): String {
+        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+        sdf.timeZone = TimeZone.getTimeZone("UTC")
+        return sdf.format(Date())
+    }
+
+    private fun showMapSettingsDialog(
+        miniMap: MiniMapView,
+        current: LatLng,
+        destination: LatLng,
+        params: WindowManager.LayoutParams
+    ) {
+        val builder = AlertDialog.Builder(this)
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_map_settings, null)
+        builder.setView(dialogView)
+        builder.setTitle("Configurações do Mapa")
+
+        val dialog = builder.create()
+
+        dialogView.findViewById<Button>(R.id.btnIncrease)?.setOnClickListener {
+            adjustMapSize(params, true, miniMap)
+        }
+
+        dialogView.findViewById<Button>(R.id.btnDecrease)?.setOnClickListener {
+            adjustMapSize(params, false, miniMap)
+        }
+
+        dialogView.findViewById<Button>(R.id.btnSwapColors)?.setOnClickListener {
+            swapMarkerColors(miniMap, current, destination)
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
 
@@ -396,6 +550,11 @@ class FloatingButtonService : Service() {
         } catch (e: Exception) {
             Log.e("FloatingButtonService", "Error in onDestroy", e)
         }
+        try {
+            LocalBroadcastManager.getInstance(this).unregisterReceiver(settingsReceiver)
+        } catch (e: Exception) {
+            Log.e("FloatingButtonService", "Error unregistering receiver", e)
+        }
         super.onDestroy()
     }
 
@@ -404,5 +563,4 @@ class FloatingButtonService : Service() {
         stopForeground(true)
         stopSelf()
     }
-
 }

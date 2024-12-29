@@ -1,109 +1,143 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:layout_height="match_parent">
 
-    <!-- Marker Colors Section -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Marker Colors"
-        android:textStyle="bold"
-        android:layout_marginBottom="8dp"/>
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Origin Marker Color"
-        android:textSize="14sp"/>
-
-    <SeekBar
-        android:id="@+id/originColorSlider"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:max="360"/>
+        android:orientation="vertical"
+        android:padding="16dp">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Destination Marker Color"
-        android:textSize="14sp"/>
+        <!-- Cores do Marcador de Origem -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cor do Marcador de Origem"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
 
-    <SeekBar
-        android:id="@+id/destinationColorSlider"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"
-        android:max="360"/>
+        <RadioGroup
+            android:id="@+id/originColorGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"/>
 
-    <!-- Line Thickness Section -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Line Thickness"
-        android:textStyle="bold"
-        android:layout_marginBottom="8dp"/>
+        <!-- Cores do Marcador de Destino -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cor do Marcador de Destino"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"/>
 
-    <SeekBar
-        android:id="@+id/lineThicknessSlider"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"
-        android:max="15"
-        android:progress="5"/>
+        <RadioGroup
+            android:id="@+id/destinationColorGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"/>
 
-    <!-- Map Size Section -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Map Size"
-        android:textStyle="bold"
-        android:layout_marginBottom="8dp"/>
+        <!-- Espessura da Linha -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Espessura da Linha"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"/>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Map Width"
-        android:textSize="14sp"/>
+        <RadioGroup
+            android:id="@+id/lineWidthGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-    <SeekBar
-        android:id="@+id/mapWidthSlider"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:max="500"
-        android:progress="250"/>
+            <RadioButton
+                android:id="@+id/thinLine"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Fina"/>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Map Height"
-        android:textSize="14sp"/>
+            <RadioButton
+                android:id="@+id/mediumLine"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Média"/>
 
-    <SeekBar
-        android:id="@+id/mapHeightSlider"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"
-        android:max="500"
-        android:progress="250"/>
+            <RadioButton
+                android:id="@+id/thickLine"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Grossa"/>
+        </RadioGroup>
 
-    <!-- Map Zoom Section -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Map Zoom"
-        android:textStyle="bold"
-        android:layout_marginBottom="8dp"/>
+        <!-- Tipo de Mapa -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tipo de Mapa"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"/>
 
-    <SeekBar
-        android:id="@+id/mapZoomSlider"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:max="16"
-        android:progress="8"/>
+        <RadioGroup
+            android:id="@+id/mapTypeGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-</LinearLayout>
+            <RadioButton
+                android:id="@+id/normalMapType"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Normal"/>
+
+            <RadioButton
+                android:id="@+id/satelliteMapType"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Satélite"/>
+
+            <RadioButton
+                android:id="@+id/hybridMapType"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Híbrido"/>
+        </RadioGroup>
+
+        <!-- Tamanho do Mapa -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tamanho do Mapa"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"/>
+
+        <SeekBar
+            android:id="@+id/mapSizeSeekBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100"
+            android:progress="100"/>
+
+        <TextView
+            android:id="@+id/mapSizeText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="100% (850 x 850)"/>
+
+        <Button
+            android:id="@+id/saveButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp"
+            android:text="Salvar"
+            android:textSize="16sp"
+            style="@style/Widget.MaterialComponents.Button"/>
+
+    </LinearLayout>
+</ScrollView>

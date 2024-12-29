@@ -38,6 +38,15 @@
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
 
+        <!-- Receiver para configurações -->
+        <receiver
+            android:name=".SettingsReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.lefsilva.lridemap.UPDATE_MAP_SETTINGS" />
+            </intent-filter>
+        </receiver>
+
         <!-- Serviço de Acessibilidade -->
         <service
             android:name=".LyftAddressAccessibilityService"
@@ -67,7 +76,6 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
         </activity>
 
         <activity

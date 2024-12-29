@@ -21,6 +21,7 @@ import com.lefsilva.lridemap.databinding.ActivityMainBinding
 
 class MainActivity : ComponentActivity() {
     private lateinit var binding: ActivityMainBinding
+    private lateinit var miniMapView: MiniMapView
     private val OVERLAY_PERMISSION_REQUEST_CODE = 1234
     private val REQUIRED_PERMISSIONS = arrayOf(
         Manifest.permission.ACCESS_FINE_LOCATION,
