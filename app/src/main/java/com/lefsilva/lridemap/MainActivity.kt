@@ -72,11 +72,25 @@ class MainActivity : ComponentActivity() {
             )
         )
 
-        val adapter = ServiceAdapter(this, services) { serviceName, isEnabled ->
-            when (serviceName) {
-                "Lyft Ride Map" -> toggleFloatingButtonService(isEnabled)
+        val adapter = ServiceAdapter(
+            this,
+            services,
+            onServiceToggle = { serviceName, isEnabled ->
+                when (serviceName) {
+                    "Lyft Ride Map" -> {
+                        toggleFloatingButtonService(isEnabled)
+                    }
+                }
+            },
+            onSettingsClick = { serviceName ->
+                when (serviceName) {
+                    "Lyft Ride Map" -> {
+                        val intent = Intent(this, SettingsActivity::class.java)
+                        startActivity(intent)
+                    }
+                }
             }
-        }
+        )
 
         binding.recyclerView.apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
@@ -189,25 +203,37 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         checkAndStartService()
-        // Atualizar o estado do switch baseado no serviço real
         updateServiceState()
     }
 
     private fun updateServiceState() {
         if (binding.recyclerView.adapter is ServiceAdapter) {
-            val isServiceRunning = isServiceRunning(FloatingButtonService::class.java)
             val services = listOf(
                 ServiceItem(
                     name = "Lyft Ride Map",
                     iconResId = R.drawable.ic_map,
-                    isEnabled = isServiceRunning
+                    isEnabled = isServiceRunning(FloatingButtonService::class.java)
                 )
             )
-            binding.recyclerView.adapter = ServiceAdapter(this, services) { serviceName, isEnabled ->
-                when (serviceName) {
-                    "Lyft Ride Map" -> toggleFloatingButtonService(isEnabled)
+            binding.recyclerView.adapter = ServiceAdapter(
+                this,
+                services,
+                onServiceToggle = { serviceName, isEnabled ->
+                    when (serviceName) {
+                        "Lyft Ride Map" -> {
+                            toggleFloatingButtonService(isEnabled)
+                        }
+                    }
+                },
+                onSettingsClick = { serviceName ->
+                    when (serviceName) {
+                        "Lyft Ride Map" -> {
+                            val intent = Intent(this, SettingsActivity::class.java)
+                            startActivity(intent)
+                        }
+                    }
                 }
-            }
+            )
         }
     }
 }

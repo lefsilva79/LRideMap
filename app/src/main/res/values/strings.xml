@@ -11,4 +11,6 @@
     <string name="map_description">Mapa mostrando rota entre sua localização e o destino</string>
     <string name="service_icon_description">Ícone do serviço</string>
     <string name="line_thickness_title">Espessura da Linha</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings">Settings</string>
 </resources>

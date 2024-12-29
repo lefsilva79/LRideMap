@@ -22,6 +22,7 @@ import com.google.android.material.slider.Slider
 import androidx.appcompat.app.AlertDialog
 import android.widget.SeekBar
 import android.widget.Toast
+import android.content.Intent
 
 
 private const val TAG = "MiniMapView"
@@ -77,26 +78,17 @@ class MiniMapView(context: Context) : FrameLayout(context) {
                 onCloseListener?.invoke()
             }
 
-            // Configura o botão de configurações para alterar tanto a espessura quanto as cores
+            // Configura o botão de configurações para abrir a SettingsActivity
             findViewById<ImageButton>(R.id.settings_button).setOnClickListener {
                 Log.d(TAG, "Settings button clicked")
 
-                // Alterna entre três espessuras de linha: 5f, 10f, 15f
-                preferences.lineThickness = when (preferences.lineThickness) {
-                    5f -> 10f
-                    10f -> 15f
-                    else -> 5f
+                // Cria e inicia a SettingsActivity
+                val intent = Intent(context, SettingsActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
+                context.startActivity(intent)
 
-                // Troca as cores dos marcadores
-                val originColor = getOriginMarkerColor()
-                val destinationColor = getDestinationMarkerColor()
-                setMarkerColors(
-                    originColor = destinationColor,
-                    destinationColor = originColor
-                )
-
-                // Atualiza a rota com a nova espessura e cores
+                // Após retornar das configurações, atualiza a rota se existir
                 if (::lastCurrentLocation.isInitialized && ::lastDestination.isInitialized) {
                     showRoute(lastCurrentLocation, lastDestination)
                 }
