@@ -213,7 +213,7 @@ class MiniMapView(context: Context) : FrameLayout(context) {
 
             val padding = 300
             googleMap.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, padding))
-            googleMap.animateCamera(CameraUpdateFactory.zoomTo(11f))
+            googleMap.animateCamera(CameraUpdateFactory.zoomTo(10f))
 
         } catch (e: Exception) {
             Log.e(TAG, "Error displaying route", e)

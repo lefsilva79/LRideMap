@@ -51,6 +51,7 @@ class FloatingButtonService : Service() {
 
     private val ATTRACTION_THRESHOLD = 300
     private val ATTRACTION_FORCE = 0.6f
+    private val handler = Handler(Looper.getMainLooper())
 
     private val settingsReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -331,9 +332,8 @@ class FloatingButtonService : Service() {
             val miniMap = MiniMapView(this)
             miniMapView = miniMap
 
-            // Usar AppPreferences ao invés de MapSettings
             val preferences = AppPreferences(this)
-            val mapSize = preferences.mapWidth // width e height são iguais
+            val mapSize = preferences.mapWidth
             val originHue = preferences.originMarkerColor
             val destinationHue = preferences.destinationMarkerColor
 
@@ -363,20 +363,33 @@ class FloatingButtonService : Service() {
                 y = 0
             }
 
-            // Configurar as cores usando valores de matiz (hue)
             miniMap.setMarkerColors(originColor = originHue, destinationColor = destinationHue)
 
             miniMap.setOnCloseClickListener {
+                handler.removeCallbacksAndMessages(null) // Remove pending callbacks
                 windowManager.removeView(miniMap)
                 miniMapView = null
             }
 
             miniMap.setOnSettingsClickListener {
+                handler.removeCallbacksAndMessages(null) // Remove pending callbacks
                 showMapSettingsDialog(miniMap, current, destination, params)
             }
 
             windowManager.addView(miniMap, params)
             miniMap.showRoute(current, destination)
+
+            // Schedule automatic closure after 5 seconds
+            handler.postDelayed({
+                try {
+                    if (miniMapView != null) {
+                        windowManager.removeView(miniMap)
+                        miniMapView = null
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error closing mini map automatically", e)
+                }
+            }, 5000) // 5000 milliseconds = 5 seconds
 
         } catch (e: Exception) {
             Log.e(TAG, "Erro ao mostrar mini mapa", e)
@@ -538,6 +551,7 @@ class FloatingButtonService : Service() {
     override fun onDestroy() {
         Log.d("FloatingButtonService", "onDestroy called")
         try {
+            handler.removeCallbacksAndMessages(null) // Clean up any pending callbacks
             if (::floatingButton.isInitialized) {
                 windowManager.removeView(floatingButton)
             }

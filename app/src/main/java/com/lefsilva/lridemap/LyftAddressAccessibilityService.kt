@@ -7,7 +7,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 
 class LyftAddressAccessibilityService : AccessibilityService() {
     companion object {
-        private const val TAG = "LyftAccessibilityService"
+        private const val TAG = "LyftAddressAccessibilityService"
         private var instance: LyftAddressAccessibilityService? = null
         var lastDetectedAddress: String = ""
             private set
@@ -23,6 +23,8 @@ class LyftAddressAccessibilityService : AccessibilityService() {
 
     private var screenHeight: Int = 0
     private var screenWidth: Int = 0
+    private var foundFirstTimeAddress = false
+    private var lastTimeFound = false
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -35,11 +37,13 @@ class LyftAddressAccessibilityService : AccessibilityService() {
     }
 
     private fun findCurrentAddress(): String {
-        lastDetectedAddress = ""  // Reset do último endereço
+        lastDetectedAddress = ""
+        foundFirstTimeAddress = false
+        lastTimeFound = false
         try {
             val rootNode = rootInActiveWindow
             if (rootNode != null) {
-                findAddressNodes(rootNode)
+                findSecondTimeAddressSequence(rootNode)
                 rootNode.recycle()
             }
         } catch (e: Exception) {
@@ -48,9 +52,59 @@ class LyftAddressAccessibilityService : AccessibilityService() {
         return lastDetectedAddress
     }
 
-    // Novo método para encontrar endereço na parte superior
+    private fun findSecondTimeAddressSequence(node: AccessibilityNodeInfo) {
+        try {
+            if (node.className?.contains("android.widget.TextView") == true) {
+                val rect = android.graphics.Rect()
+                node.getBoundsInScreen(rect)
+
+                node.text?.toString()?.let { text ->
+                    // Verifica se é um tempo usando apenas o bullet point (•) como identificador
+                    if (text.contains("•")) {
+                        if (!foundFirstTimeAddress) {
+                            lastTimeFound = true
+                            Log.d(TAG, "Primeiro tempo encontrado: $text")
+                        } else {
+                            lastTimeFound = true
+                            Log.d(TAG, "Segundo tempo encontrado: $text")
+                        }
+                    } else {
+                        // Se encontrou um tempo antes
+                        if (lastTimeFound) {
+                            if (!foundFirstTimeAddress) {
+                                foundFirstTimeAddress = true
+                                lastTimeFound = false
+                                Log.d(TAG, "Primeiro endereço encontrado: $text")
+                            } else {
+                                lastDetectedAddress = text
+                                Log.d(TAG, "Segundo endereço encontrado: $text")
+                                return
+                            }
+                        } else {
+                            // Não encontrou um tempo antes, continua procurando
+                        }
+                    }
+                }
+            }
+
+            for (i in 0 until node.childCount) {
+                node.getChild(i)?.let { child ->
+                    findSecondTimeAddressSequence(child)
+                    if (lastDetectedAddress.isNotEmpty()) {
+                        child.recycle()
+                        return
+                    } else {
+                        child.recycle()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Erro ao procurar endereço", e)
+        }
+    }
+
     private fun findAddressInTopHalf(): String {
-        lastDetectedAddress = ""  // Reset do último endereço
+        lastDetectedAddress = ""
         try {
             val rootNode = rootInActiveWindow
             if (rootNode != null) {
@@ -63,62 +117,20 @@ class LyftAddressAccessibilityService : AccessibilityService() {
         return lastDetectedAddress
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // Agora vazio pois a detecção é feita apenas no clique do botão
-    }
-
-    private fun findAddressNodes(node: AccessibilityNodeInfo) {
-        try {
-            // Obtém as coordenadas na tela do nó atual
-            val rect = android.graphics.Rect()
-            node.getBoundsInScreen(rect)
-
-            // Só processa se o nó estiver na metade inferior da tela
-            if (rect.top >= screenHeight / 2) {
-                node.text?.toString()?.let { text ->
-                    if (isAddress(text)) {
-                        val formattedAddress = formatAddress(text)
-                        if (formattedAddress.isNotEmpty()) {
-                            lastDetectedAddress = formattedAddress
-                            Log.d(TAG, "Endereço detectado e formatado: $lastDetectedAddress")
-                        }
-                    }
-                }
-            }
-
-            // Continue procurando nos nós filhos
-            for (i in 0 until node.childCount) {
-                node.getChild(i)?.let { child ->
-                    findAddressNodes(child)
-                    child.recycle()
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Erro ao procurar nós de endereço", e)
-        }
-    }
-
-    // Novo método para procurar endereços na parte superior
     private fun findAddressNodesInTopHalf(node: AccessibilityNodeInfo) {
         try {
-            // Obtém as coordenadas na tela do nó atual
             val rect = android.graphics.Rect()
             node.getBoundsInScreen(rect)
 
-            // Só processa se o nó estiver na metade superior da tela
             if (rect.top < screenHeight / 2) {
                 node.text?.toString()?.let { text ->
-                    if (isAddress(text)) {
-                        val formattedAddress = formatAddress(text)
-                        if (formattedAddress.isNotEmpty()) {
-                            lastDetectedAddress = formattedAddress
-                            Log.d(TAG, "Endereço detectado na parte superior: $lastDetectedAddress")
-                        }
+                    if (text.isNotEmpty()) {
+                        lastDetectedAddress = text
+                        Log.d(TAG, "Endereço detectado na parte superior: $lastDetectedAddress")
                     }
                 }
             }
 
-            // Continue procurando nos nós filhos
             for (i in 0 until node.childCount) {
                 node.getChild(i)?.let { child ->
                     findAddressNodesInTopHalf(child)
@@ -130,44 +142,7 @@ class LyftAddressAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun isAddress(text: String): Boolean {
-        // Primeiro, formata o texto para juntar possíveis múltiplas linhas
-        val formattedText = formatAddress(text)
-
-        // Verifica se começa com número
-        if (!formattedText.matches(Regex("^\\d+.*"))) {
-            return false
-        }
-
-        // Verifica comprimento mínimo
-        if (formattedText.length < 5) {
-            return false
-        }
-
-        // Ignora textos muito longos (provavelmente são descrições)
-        if (formattedText.length > 100) {
-            return false
-        }
-
-        // Verifica se contém palavras-chave típicas de endereços dos EUA
-        val hasAddressKeywords = formattedText.contains(Regex("\\b(St|Ave|Rd|Blvd|Dr|Ln|Way|IL|Chicago)\\b", RegexOption.IGNORE_CASE))
-
-        // Ignora se contém palavras-chave típicas de conteúdo não-endereço
-        val hasNonAddressKeywords = formattedText.contains(Regex("\\b(view|hotel|family|reviews|bubbles)\\b", RegexOption.IGNORE_CASE))
-
-        return hasAddressKeywords && !hasNonAddressKeywords
-    }
-
-    private fun formatAddress(text: String): String {
-        return text
-            .trim()
-            .replace(Regex("\\s+"), " ")  // Remove espaços extras
-            .replace("\t", " ")           // Remove tabulações
-            .split("\n")                  // Divide por quebras de linha
-            .map { it.trim() }           // Remove espaços no início e fim de cada linha
-            .filter { it.isNotEmpty() }  // Remove linhas vazias
-            .joinToString(", ")          // Junta as linhas com vírgula
-    }
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
 
     override fun onInterrupt() {
         Log.d(TAG, "Serviço de acessibilidade interrompido")
