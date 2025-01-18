@@ -17,16 +17,12 @@ import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
-import android.view.LayoutInflater
-import com.google.android.material.slider.Slider
-import androidx.appcompat.app.AlertDialog
-import android.widget.SeekBar
-import android.widget.Toast
+import android.view.View
 import android.content.Intent
-
-
-
-private const val TAG = "MiniMapView"
+import android.os.Handler
+import android.os.Looper
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MiniMapView(context: Context) : FrameLayout(context) {
     private lateinit var mapView: MapView
@@ -40,25 +36,33 @@ class MiniMapView(context: Context) : FrameLayout(context) {
     private var savedInstanceState: Bundle? = null
     private lateinit var lastCurrentLocation: LatLng
     private lateinit var lastDestination: LatLng
+    private val handler = Handler(Looper.getMainLooper())
+    private val hideRunnable = Runnable {
+        visibility = View.GONE
+    }
 
+    companion object {
+        private const val TAG = "MiniMapView"
+
+        private fun getCurrentUTCTime(): String {
+            val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+            sdf.timeZone = TimeZone.getTimeZone("UTC")
+            return sdf.format(Date())
+        }
+    }
 
     init {
-        Log.d(TAG, "Initializing MiniMapView")
+        Log.d(TAG, """MiniMapView Initialization
+            Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): ${getCurrentUTCTime()}
+        """.trimIndent())
+
         try {
-            // Inicializa o MapsInitializer de forma assíncrona
             MapsInitializer.initialize(context.applicationContext, MapsInitializer.Renderer.LATEST) { }
-
             inflate(context, R.layout.mini_map_layout, this)
-
-            // Inicializa as preferências após o inflate
             preferences = AppPreferences(context)
-
-            // Inicializa as views
             initializeViews()
-
-            // Verifica disponibilidade do Google Play Services e inicializa o mapa
             checkGooglePlayServicesAndInitMap()
-
+            updateVisibility()
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing MiniMapView", e)
         }
@@ -66,23 +70,27 @@ class MiniMapView(context: Context) : FrameLayout(context) {
 
     private fun initializeViews() {
         try {
-            Log.d(TAG, "Initializing views")
+            Log.d(TAG, """Initializing views
+                Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): ${getCurrentUTCTime()}
+            """.trimIndent())
 
-            // Inicializa o MapView
             mapView = findViewById(R.id.mini_map_view)
             savedInstanceState = Bundle()
             mapView.onCreate(savedInstanceState)
             mapView.onStart()
             mapView.onResume()
 
-            // Configura os botões
             findViewById<ImageButton>(R.id.close_button).setOnClickListener {
-                Log.d(TAG, "Close button clicked")
+                Log.d(TAG, """Close button clicked
+                    Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): ${getCurrentUTCTime()}
+                """.trimIndent())
                 onCloseListener?.invoke()
             }
 
             findViewById<ImageButton>(R.id.settings_button).setOnClickListener {
-                Log.d(TAG, "Settings button clicked")
+                Log.d(TAG, """Settings button clicked
+                    Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): ${getCurrentUTCTime()}
+                """.trimIndent())
                 val intent = Intent(context, SettingsActivity::class.java).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
@@ -100,22 +108,56 @@ class MiniMapView(context: Context) : FrameLayout(context) {
         val result = availability.isGooglePlayServicesAvailable(context)
 
         if (result == com.google.android.gms.common.ConnectionResult.SUCCESS) {
-            Log.d(TAG, "Google Play Services is available")
+            Log.d(TAG, """Google Play Services is available
+                Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): ${getCurrentUTCTime()}
+            """.trimIndent())
             initializeMap()
         } else {
-            Log.e(TAG, "Google Play Services is NOT available: $result")
+            Log.e(TAG, """Google Play Services is NOT available: $result
+                Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): ${getCurrentUTCTime()}
+            """.trimIndent())
         }
     }
 
+    private fun updateVisibility() {
+        when (preferences.minimapDisplayMode) {
+            AppPreferences.MinimapDisplayMode.AUTO_DETECT -> {
+                visibility = View.VISIBLE
+                findViewById<ImageButton>(R.id.close_button)?.visibility = View.GONE
+                // No modo AUTO_DETECT, não queremos que suma após 5s
+                handler.removeCallbacks(hideRunnable)
+            }
+            AppPreferences.MinimapDisplayMode.FLOATING_BUTTON -> {
+                visibility = View.VISIBLE
+                findViewById<ImageButton>(R.id.close_button)?.visibility = View.VISIBLE
+                // No modo FLOATING_BUTTON, mantém o comportamento de sumir após 5s
+                handler.removeCallbacks(hideRunnable)
+                handler.postDelayed(hideRunnable, 5000)
+            }
+        }
+
+        Log.d(TAG, """Visibility updated
+            Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): ${getCurrentUTCTime()}
+            Display Mode: ${if (preferences.minimapDisplayMode == AppPreferences.MinimapDisplayMode.AUTO_DETECT) "Auto Detect" else "Floating Button"}
+            Visibility: ${if (visibility == View.VISIBLE) "Visible" else "Gone"}
+        """.trimIndent())
+    }
+
+
+
     fun setOnSettingsClickListener(listener: () -> Unit) {
         onSettingsListener = listener
-        Log.d(TAG, "Settings listener set")
+        Log.d(TAG, """Settings listener set
+            Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): ${getCurrentUTCTime()}
+        """.trimIndent())
     }
 
     private fun initializeMap() {
         try {
             mapView.getMapAsync { map ->
-                Log.d(TAG, "Initial map async callback received")
+                Log.d(TAG, """Initial map async callback received
+                    Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): ${getCurrentUTCTime()}
+                """.trimIndent())
                 googleMap = map
                 isMapReady = true
                 map.apply {
@@ -135,18 +177,19 @@ class MiniMapView(context: Context) : FrameLayout(context) {
 
     fun setOnCloseClickListener(listener: () -> Unit) {
         onCloseListener = listener
-        Log.d(TAG, "Close listener set")
+        Log.d(TAG, """Close listener set
+            Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): ${getCurrentUTCTime()}
+        """.trimIndent())
     }
 
-    /**
-     * Shows the route between two points on the map
-     * Created by lefsilva79
-     * Date: 2024-12-28 07:52:43 UTC
-     */
     fun showRoute(current: LatLng, destination: LatLng) {
-        Log.d(TAG, "showRoute called with current: $current, destination: $destination")
+        Log.d(TAG, """showRoute called
+            Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): ${getCurrentUTCTime()}
+            Current Location: $current
+            Destination: $destination
+        """.trimIndent())
+
         try {
-            // Salva as localizações para uso posterior
             lastCurrentLocation = current
             lastDestination = destination
 
@@ -166,6 +209,8 @@ class MiniMapView(context: Context) : FrameLayout(context) {
                 displayRoute(current, destination)
             }
 
+            updateVisibility()
+
         } catch (e: Exception) {
             Log.e(TAG, "Error showing route", e)
         }
@@ -173,15 +218,17 @@ class MiniMapView(context: Context) : FrameLayout(context) {
 
     private fun displayRoute(current: LatLng, destination: LatLng) {
         try {
-            Log.d(TAG, "Displaying route with current settings:")
-            Log.d(TAG, "Origin color: ${preferences.originMarkerColor}")
-            Log.d(TAG, "Destination color: ${preferences.destinationMarkerColor}")
-            Log.d(TAG, "Line thickness: ${preferences.lineThickness}")
-            Log.d(TAG, "Map type: ${preferences.mapType}")
+            Log.d(TAG, """Displaying route
+                Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): ${getCurrentUTCTime()}
+                Settings:
+                - Origin color: ${preferences.originMarkerColor}
+                - Destination color: ${preferences.destinationMarkerColor}
+                - Line thickness: ${preferences.lineThickness}
+                - Map type: ${preferences.mapType}
+            """.trimIndent())
 
-            googleMap.clear() // Limpa marcadores anteriores
+            googleMap.clear()
 
-            // Adiciona o marcador de origem com a cor atualizada
             googleMap.addMarker(
                 MarkerOptions()
                     .position(current)
@@ -189,7 +236,6 @@ class MiniMapView(context: Context) : FrameLayout(context) {
                     .icon(BitmapDescriptorFactory.defaultMarker(preferences.originMarkerColor))
             )
 
-            // Adiciona o marcador de destino com a cor atualizada
             googleMap.addMarker(
                 MarkerOptions()
                     .position(destination)
@@ -197,7 +243,6 @@ class MiniMapView(context: Context) : FrameLayout(context) {
                     .icon(BitmapDescriptorFactory.defaultMarker(preferences.destinationMarkerColor))
             )
 
-            // Desenha a linha com a espessura atualizada
             googleMap.addPolyline(
                 PolylineOptions()
                     .add(current, destination)
@@ -205,7 +250,6 @@ class MiniMapView(context: Context) : FrameLayout(context) {
                     .color(Color.BLUE)
             )
 
-            // Ajusta a câmera para mostrar os dois pontos
             val bounds = LatLngBounds.Builder()
                 .include(current)
                 .include(destination)
@@ -220,14 +264,15 @@ class MiniMapView(context: Context) : FrameLayout(context) {
         }
     }
 
-
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         try {
             if (::mapView.isInitialized) {
                 mapView.onStart()
                 mapView.onResume()
-                Log.d(TAG, "MapView resumed on attach")
+                Log.d(TAG, """MapView resumed on attach
+                    Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): ${getCurrentUTCTime()}
+                """.trimIndent())
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error resuming MapView", e)
@@ -241,29 +286,37 @@ class MiniMapView(context: Context) : FrameLayout(context) {
                 mapView.onPause()
                 mapView.onStop()
                 mapView.onDestroy()
-                Log.d(TAG, "MapView destroyed on detach")
             }
+            // Importante: remover callbacks pendentes ao destruir a view
+            handler.removeCallbacks(hideRunnable)
+            Log.d(TAG, """MapView destroyed on detach
+                Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): ${getCurrentUTCTime()}
+            """.trimIndent())
         } catch (e: Exception) {
             Log.e(TAG, "Error destroying MapView", e)
         }
     }
 
+
     fun updateMapSettings() {
-        Log.d(TAG, "Updating map settings")
+        Log.d(TAG, """Updating map settings
+            Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): ${getCurrentUTCTime()}
+            Settings:
+            - Map Type: ${preferences.mapType}
+            - Minimap Mode: ${if (preferences.minimapDisplayMode == AppPreferences.MinimapDisplayMode.AUTO_DETECT) "Auto Detect" else "Floating Button"}
+        """.trimIndent())
+
         if (::googleMap.isInitialized) {
             try {
-                // Atualiza tipo do mapa
                 val mapType = when (preferences.mapType) {
                     MapType.SATELLITE.value -> GoogleMap.MAP_TYPE_SATELLITE
                     MapType.HYBRID.value -> GoogleMap.MAP_TYPE_HYBRID
                     else -> GoogleMap.MAP_TYPE_NORMAL
                 }
-                Log.d(TAG, "Setting map type to: $mapType")
                 googleMap.mapType = mapType
+                updateVisibility()
 
-                // Se tiver uma rota exibida, atualiza ela com as novas configurações
                 if (::lastCurrentLocation.isInitialized && ::lastDestination.isInitialized) {
-                    Log.d(TAG, "Redrawing route with new settings")
                     displayRoute(lastCurrentLocation, lastDestination)
                 }
             } catch (e: Exception) {
@@ -280,7 +333,9 @@ class MiniMapView(context: Context) : FrameLayout(context) {
 
     fun onLowMemory() {
         mapView.onLowMemory()
-        Log.d(TAG, "MapView low memory")
+        Log.d(TAG, """MapView low memory
+            Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): ${getCurrentUTCTime()}
+        """.trimIndent())
     }
 
     fun getOriginMarkerColor(): Float {
@@ -296,5 +351,11 @@ class MiniMapView(context: Context) : FrameLayout(context) {
             originMarkerColor = originColor
             destinationMarkerColor = destinationColor
         }
+        Log.d(TAG, """Marker colors updated
+            Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): ${getCurrentUTCTime()}
+            Colors:
+            - Origin: $originColor
+            - Destination: $destinationColor
+        """.trimIndent())
     }
 }

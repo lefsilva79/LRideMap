@@ -19,12 +19,22 @@ import java.util.TimeZone
 
 private const val TAG = "Settings_ColorTracker"
 
+enum class MinimapDisplayMode(val value: Int) {
+    FLOATING_BUTTON(0),
+    AUTO_DETECT(1);
+
+    companion object {
+        fun fromValue(value: Int) = values().find { it.value == value } ?: FLOATING_BUTTON
+    }
+}
+
 class SettingsActivity : AppCompatActivity() {
     private lateinit var preferences: AppPreferences
     private lateinit var originColorGroup: RadioGroup
     private lateinit var destinationColorGroup: RadioGroup
     private lateinit var lineWidthGroup: RadioGroup
     private lateinit var mapTypeGroup: RadioGroup
+    private lateinit var minimapDisplayGroup: RadioGroup
     private lateinit var mapSizeSeekBar: SeekBar
     private lateinit var mapSizeText: TextView
     private lateinit var saveButton: Button
@@ -58,6 +68,7 @@ class SettingsActivity : AppCompatActivity() {
         destinationColorGroup = findViewById(R.id.destinationColorGroup)
         lineWidthGroup = findViewById(R.id.lineWidthGroup)
         mapTypeGroup = findViewById(R.id.mapTypeGroup)
+        minimapDisplayGroup = findViewById(R.id.minimapDisplayGroup)
         mapSizeSeekBar = findViewById(R.id.mapSizeSeekBar)
         mapSizeText = findViewById(R.id.mapSizeText)
         saveButton = findViewById(R.id.saveButton)
@@ -78,24 +89,14 @@ class SettingsActivity : AppCompatActivity() {
 
         Log.d(TAG, "Configuring destination color group...")
         setupColorGroup(destinationColorGroup) { color ->
-            Log.d(
-                TAG,
-                "Destination color change attempt - Selected: ${color.name}, Value: ${color.colorValue}"
-            )
+            Log.d(TAG, "Destination color change attempt - Selected: ${color.name}, Value: ${color.colorValue}")
             val previousColor = preferences.destinationMarkerColor
             preferences.destinationMarkerColor = color.colorValue
-            Log.d(
-                TAG,
-                "Destination color update verification - Previous: $previousColor, New: ${color.colorValue}"
-            )
+            Log.d(TAG, "Destination color update verification - Previous: $previousColor, New: ${color.colorValue}")
 
-            // Verificação adicional após a mudança
             val savedColor = preferences.destinationMarkerColor
             if (savedColor != color.colorValue) {
-                Log.e(
-                    TAG,
-                    "Destination color mismatch - Expected: ${color.colorValue}, Actual: $savedColor"
-                )
+                Log.e(TAG, "Destination color mismatch - Expected: ${color.colorValue}, Actual: $savedColor")
             }
         }
 
@@ -121,20 +122,25 @@ class SettingsActivity : AppCompatActivity() {
             preferences.mapType = mapType
         }
 
+        // Configurar modo de exibição do minimap
+        minimapDisplayGroup.setOnCheckedChangeListener { _, checkedId ->
+            val mode = when (checkedId) {
+                R.id.rbAutoDetect -> MinimapDisplayMode.AUTO_DETECT.value
+                else -> MinimapDisplayMode.FLOATING_BUTTON.value
+            }
+            Log.d(TAG, "Minimap display mode changed to: ${MinimapDisplayMode.fromValue(mode).name}")
+            preferences.minimapDisplayMode = mode
+        }
+
         // Configurar tamanho do mapa
         mapSizeSeekBar.apply {
             max = 100
-            val initialProgress =
-                ((preferences.mapWidth.toFloat() / DEFAULT_MAP_SIZE) * 100).toInt()
+            val initialProgress = ((preferences.mapWidth.toFloat() / DEFAULT_MAP_SIZE) * 100).toInt()
             Log.d(TAG, "Initial map size progress: $initialProgress")
             progress = initialProgress
 
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(
-                    seekBar: SeekBar?,
-                    progress: Int,
-                    fromUser: Boolean
-                ) {
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                     val size = (DEFAULT_MAP_SIZE * (progress / 100f)).toInt()
                     mapSizeText.text = "$progress% ($size x $size)"
                     if (fromUser) {
@@ -172,6 +178,7 @@ Color Settings:
 
 Other Settings:
 - Line Thickness: ${preferences.lineThickness}
+- Minimap Display Mode: ${MinimapDisplayMode.fromValue(preferences.minimapDisplayMode).name}
 =========================================="""
             )
 
@@ -196,6 +203,7 @@ Color Settings:
 
 Other Settings:
 - Line Thickness: ${preferences.lineThickness}
+- Minimap Display Mode: ${MinimapDisplayMode.fromValue(preferences.minimapDisplayMode).name}
 =========================================="""
             )
 
@@ -206,10 +214,7 @@ Other Settings:
     }
 
     private fun setupColorGroup(group: RadioGroup, onColorSelected: (MarkerColor) -> Unit) {
-        Log.d(
-            TAG,
-            "Setting up color group: ${if (group.id == R.id.originColorGroup) "Origin" else "Destination"}"
-        )
+        Log.d(TAG, "Setting up color group: ${if (group.id == R.id.originColorGroup) "Origin" else "Destination"}")
         group.removeAllViews()
 
         MarkerColor.values().forEach { color ->
@@ -222,27 +227,20 @@ Other Settings:
                 )
             }
             group.addView(radioButton)
-            Log.d(
-                TAG,
-                "Added radio button for ${if (group.id == R.id.originColorGroup) "Origin" else "Destination"} color: ${color.name}"
-            )
+            Log.d(TAG, "Added radio button for ${if (group.id == R.id.originColorGroup) "Origin" else "Destination"} color: ${color.name}")
         }
 
         group.setOnCheckedChangeListener { radioGroup, checkedId ->
             val selectedButton = radioGroup.findViewById<RadioButton>(checkedId)
             val colorName = selectedButton.text.toString().toUpperCase()
             val color = MarkerColor.valueOf(colorName)
-            Log.d(
-                TAG,
-                "${if (group.id == R.id.originColorGroup) "Origin" else "Destination"} color selected: ${color.name}"
-            )
+            Log.d(TAG, "${if (group.id == R.id.originColorGroup) "Origin" else "Destination"} color selected: ${color.name}")
             onColorSelected(color)
         }
     }
 
     private fun loadSavedSettings() {
-        Log.d(
-            TAG, """
+        Log.d(TAG, """
         ======= Loading Saved Settings =======
         Time (UTC): ${getCurrentUTCTime()}
         
@@ -254,8 +252,7 @@ Other Settings:
         val originColor = MarkerColor.fromColorValue(preferences.originMarkerColor)
         val destinationColor = MarkerColor.fromColorValue(preferences.destinationMarkerColor)
 
-        Log.d(
-            TAG, """
+        Log.d(TAG, """
     Color Configuration:
     Origin Marker:
     - Color Name: ${originColor.name}
@@ -275,8 +272,7 @@ Other Settings:
         val selectedOriginColor = preferences.originMarkerColor
         val selectedDestinationColor = preferences.destinationMarkerColor
 
-        Log.d(
-            TAG, """
+        Log.d(TAG, """
         Color Selection Verification:
         Origin Marker:
         - Expected HSV: ${originColor.colorValue}
@@ -297,8 +293,7 @@ Other Settings:
             else -> R.id.mediumLine
         }
         lineWidthGroup.check(lineButtonId)
-        Log.d(
-            TAG, """
+        Log.d(TAG, """
         Line Configuration:
         - Thickness: ${preferences.lineThickness}
         - Button ID: $lineButtonId
@@ -312,12 +307,25 @@ Other Settings:
             else -> R.id.normalMapType
         }
         mapTypeGroup.check(mapTypeButtonId)
-        Log.d(
-            TAG, """
+        Log.d(TAG, """
         Map Type Configuration:
         - Type: ${MapType.fromValue(preferences.mapType).name}
         - Value: ${preferences.mapType}
         - Button ID: $mapTypeButtonId
+    """.trimIndent()
+        )
+
+        // Carregar modo de exibição do minimap
+        val minimapButtonId = when (MinimapDisplayMode.fromValue(preferences.minimapDisplayMode)) {
+            MinimapDisplayMode.AUTO_DETECT -> R.id.rbAutoDetect
+            else -> R.id.rbFloatingButton
+        }
+        minimapDisplayGroup.check(minimapButtonId)
+        Log.d(TAG, """
+        Minimap Display Configuration:
+        - Mode: ${MinimapDisplayMode.fromValue(preferences.minimapDisplayMode).name}
+        - Value: ${preferences.minimapDisplayMode}
+        - Button ID: $minimapButtonId
     """.trimIndent()
         )
 
@@ -326,8 +334,7 @@ Other Settings:
         mapSizeSeekBar.progress = progress
         mapSizeText.text = "$progress% (${preferences.mapWidth} x ${preferences.mapHeight})"
 
-        Log.d(
-            TAG, """
+        Log.d(TAG, """
         Map Size Configuration:
         - Width: ${preferences.mapWidth}
         - Height: ${preferences.mapHeight}
@@ -338,8 +345,7 @@ Other Settings:
         )
 
         // Verificação final
-        Log.d(
-            TAG, """
+        Log.d(TAG, """
         ======= Settings Load Summary =======
         Time (UTC): ${getCurrentUTCTime()}
         
@@ -352,6 +358,7 @@ Other Settings:
            - Size: ${preferences.mapWidth}x${preferences.mapHeight}
            - Type: ${MapType.fromValue(preferences.mapType).name}
            - Line Thickness: ${preferences.lineThickness}
+           - Minimap Display Mode: ${MinimapDisplayMode.fromValue(preferences.minimapDisplayMode).name}
         
         All Settings Loaded Successfully
         ===============================
@@ -360,18 +367,12 @@ Other Settings:
     }
 
     private fun selectColorInGroup(group: RadioGroup, color: MarkerColor) {
-        Log.d(
-            TAG,
-            "Selecting color in ${if (group.id == R.id.originColorGroup) "Origin" else "Destination"} group: ${color.name}"
-        )
+        Log.d(TAG, "Selecting color in ${if (group.id == R.id.originColorGroup) "Origin" else "Destination"} group: ${color.name}")
         for (i in 0 until group.childCount) {
             val button = group.getChildAt(i) as RadioButton
             if (button.text.toString().toUpperCase() == color.name) {
                 button.isChecked = true
-                Log.d(
-                    TAG,
-                    "Selected radio button for ${if (group.id == R.id.originColorGroup) "Origin" else "Destination"} color: ${color.name}"
-                )
+                Log.d(TAG, "Selected radio button for ${if (group.id == R.id.originColorGroup) "Origin" else "Destination"} color: ${color.name}")
                 break
             }
         }

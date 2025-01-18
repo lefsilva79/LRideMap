@@ -129,6 +129,35 @@
             android:layout_gravity="center"
             android:text="100% (850 x 850)"/>
 
+        <!-- Modo de Exibição do Minimap -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Modo de Exibição do Minimap"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"/>
+
+        <RadioGroup
+            android:id="@+id/minimapDisplayGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <RadioButton
+                android:id="@+id/rbFloatingButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:text="Botão Flutuante"/>
+
+            <RadioButton
+                android:id="@+id/rbAutoDetect"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Detectar automaticamente"/>
+        </RadioGroup>
+
         <Button
             android:id="@+id/saveButton"
             android:layout_width="match_parent"
