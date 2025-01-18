@@ -1,6 +1,7 @@
 package com.lefsilva.lridemap
 
 import android.accessibilityservice.AccessibilityService
+import android.content.Intent
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -142,7 +143,47 @@ class LyftAddressAccessibilityService : AccessibilityService() {
         }
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        event?.let {
+            if (it.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+                findAddToQueueText()
+            }
+        }
+    }
+
+
+    private fun findAddToQueueText() {
+        try {
+            val rootNode = rootInActiveWindow
+            rootNode?.let { node ->
+                findAddToQueueInNode(node)
+                node.recycle()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Erro ao procurar texto 'Add to queue'", e)
+        }
+    }
+
+    private fun findAddToQueueInNode(node: AccessibilityNodeInfo) {
+        try {
+            node.text?.toString()?.let { text ->
+                if (text.contains("Add to queue", ignoreCase = true)) {
+                    val intent = Intent("com.lefsilva.lridemap.ADD_TO_QUEUE_DETECTED")
+                    sendBroadcast(intent)
+                    return
+                }
+            }
+
+            for (i in 0 until node.childCount) {
+                node.getChild(i)?.let { child ->
+                    findAddToQueueInNode(child)
+                    child.recycle()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Erro ao procurar em nó", e)
+        }
+    }
 
     override fun onInterrupt() {
         Log.d(TAG, "Serviço de acessibilidade interrompido")

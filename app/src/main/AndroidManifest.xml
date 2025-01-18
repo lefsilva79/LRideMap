@@ -11,6 +11,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <!-- Permissões do Google Maps -->
     <uses-feature
@@ -27,6 +28,14 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.LRideMap"
         tools:targetApi="31">
+
+        <receiver
+            android:name=".AddToQueueReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.lefsilva.lridemap.ADD_TO_QUEUE_DETECTED" />
+            </intent-filter>
+        </receiver>
 
         <!-- API Key do Google Maps -->
         <meta-data

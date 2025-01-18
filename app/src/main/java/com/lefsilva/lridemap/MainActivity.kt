@@ -10,6 +10,8 @@ import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Context
+import android.content.IntentFilter
+import android.os.PowerManager
 import android.view.View
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -27,6 +29,11 @@ class MainActivity : ComponentActivity() {
         Manifest.permission.ACCESS_FINE_LOCATION,
         Manifest.permission.ACCESS_COARSE_LOCATION
     )
+
+    private val addToQueueReceiver = AddToQueueReceiver()
+    companion object {
+        private const val ADD_TO_QUEUE_ACTION = "com.lefsilva.lridemap.ADD_TO_QUEUE_DETECTED"
+    }
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -50,6 +57,21 @@ class MainActivity : ComponentActivity() {
 
         setupInitialState()
         checkAndStartService()
+        registerAddToQueueReceiver()
+    }
+
+    private fun registerAddToQueueReceiver() {
+        val filter = IntentFilter(ADD_TO_QUEUE_ACTION)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(
+                addToQueueReceiver,
+                filter,
+                Context.RECEIVER_NOT_EXPORTED
+            )
+        } else {
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            registerReceiver(addToQueueReceiver, filter)
+        }
     }
 
     private fun setupInitialState() {
@@ -57,11 +79,13 @@ class MainActivity : ComponentActivity() {
         binding.accessibilityButton.setOnClickListener { openAccessibilitySettings() }
         binding.locationButton.setOnClickListener { requestLocationPermissions() }
         binding.overlayButton.setOnClickListener { requestOverlayPermission() }
+        binding.batteryButton.setOnClickListener { requestBatteryOptimizationDisable() }  // Novo botão
 
         // Define os checkboxes como não clicáveis
         binding.accessibilityCheck.isClickable = false
         binding.locationCheck.isClickable = false
         binding.overlayCheck.isClickable = false
+        binding.batteryCheck.isClickable = false  // Novo checkbox
     }
 
     private fun setupRecyclerView() {
@@ -101,13 +125,22 @@ class MainActivity : ComponentActivity() {
 
     private fun toggleFloatingButtonService(enabled: Boolean) {
         val serviceIntent = Intent(this, FloatingButtonService::class.java)
+        val appPreferences = AppPreferences(this)
+
         if (enabled) {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                startForegroundService(serviceIntent)
+            // Verifica o modo de exibição configurado
+            if (appPreferences.minimapDisplayMode == AppPreferences.MinimapDisplayMode.AUTO_DETECT) {
+                Toast.makeText(this, "Detecção automática está ativada. Botão flutuante não é necessário.", Toast.LENGTH_LONG).show()
+                // Atualiza o switch para desligado
+                updateServiceState()
             } else {
-                startService(serviceIntent)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    startForegroundService(serviceIntent)
+                } else {
+                    startService(serviceIntent)
+                }
+                Toast.makeText(this, "Serviço iniciado", Toast.LENGTH_SHORT).show()
             }
-            Toast.makeText(this, "Serviço iniciado", Toast.LENGTH_SHORT).show()
         } else {
             stopService(serviceIntent)
             Toast.makeText(this, "Serviço parado", Toast.LENGTH_SHORT).show()
@@ -191,6 +224,7 @@ class MainActivity : ComponentActivity() {
             accessibilityCheck.isChecked = isAccessibilityServiceEnabled()
             locationCheck.isChecked = areLocationPermissionsGranted()
             overlayCheck.isChecked = Settings.canDrawOverlays(this@MainActivity)
+            batteryCheck.isChecked = isBatteryOptimizationDisabled()
         }
     }
 
@@ -235,6 +269,41 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             )
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        try {
+            unregisterReceiver(addToQueueReceiver)
+        } catch (e: Exception) {
+            // Ignore exception if receiver is not registered
+        }
+    }
+
+    private fun isBatteryOptimizationDisabled(): Boolean {
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            powerManager.isIgnoringBatteryOptimizations(packageName)
+        } else {
+            true
+        }
+    }
+
+    private fun requestBatteryOptimizationDisable() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            try {
+                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+                startActivity(intent)
+            } catch (e: Exception) {
+                Toast.makeText(
+                    this,
+                    "Não foi possível abrir as configurações de bateria",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
         }
     }
 }
